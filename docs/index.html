@@ -305,7 +305,7 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
           </a>
           <a id="dl-portable" class="btn-secondary" href="https://github.com/NologX-com/NologGuard/releases/download/v1.2.2/NologGuard.exe">
             <span>⚡</span>
-            <span data-i18n="cta_portable">Bản Portable 1 File (~358 KB)</span>
+            <span data-i18n="cta_portable">Bản Portable 1 File (~363 KB)</span>
           </a>
         </div>
 
@@ -617,6 +617,43 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
           </div>
         </div>
       </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3 style="margin-bottom:6px;" data-i18n="os_t">Tương thích Windows (7 / 8 / 8.1 / 10 / 11 — Bản 64-bit x64)</h3>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="os_h1">Hệ điều hành (x64)</th>
+                <th data-i18n="os_h2">Hỗ trợ?</th>
+                <th data-i18n="os_h3">Ghi chú kỹ thuật</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Windows 11</strong></td>
+                <td class="tag-ok" data-i18n="os_w11_s">Có (100% tính năng)</td>
+                <td data-i18n="os_w11_d">Chạy sẵn không cần cài thêm gì; hỗ trợ cả Windows 11 System-wide DoH, HTTP/2 DoH, cắt SNI &amp; Firewall QUIC.</td>
+              </tr>
+              <tr>
+                <td><strong>Windows 10</strong></td>
+                <td class="tag-ok" data-i18n="os_w10_s">Có (Chính thức)</td>
+                <td data-i18n="os_w10_d">Đầy đủ Proxy DoH HTTP/2 (1703+), cắt SNI, AdBlock &amp; Firewall QUIC (bản Win 10 &lt;1903 cần cài thêm .NET 4.8; không có Win11 System DoH).</td>
+              </tr>
+              <tr>
+                <td><strong>Windows 8.1 &amp; Windows 7 SP1</strong></td>
+                <td class="tag-warn" data-i18n="os_w7_s">Giới hạn / Chưa test</td>
+                <td data-i18n="os_w7_d">Chỉ chạy được nếu máy x64 tự cài thêm .NET Framework 4.8 + vá TLS 1.2 (KB3140245); WinHTTP lùi về HTTP/1.1 DoH và không có System DoH.</td>
+              </tr>
+              <tr>
+                <td><strong>Windows 8.0 &amp; Windows 32-bit (x86)</strong></td>
+                <td class="tag-bad" data-i18n="os_w8_s">Không hỗ trợ</td>
+                <td data-i18n="os_w8_d">.NET Framework 4.8 không hỗ trợ Windows 8.0 và NologGuard chỉ phát hành bản 64-bit (x64).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 </main>
@@ -657,7 +694,7 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
       hero_title: "Lá chắn riêng tư 1-Click cho Windows — Giữ nguyên IP thật & tốc độ gốc",
       hero_sub: "NologGuard gộp <strong>DoH HTTP/2 mã hóa DNS</strong>, <strong>cắt gói TLS SNI để giấu tên miền truy cập khỏi DPI nhà mạng (ISP)</strong>, <strong>tắt rò rỉ QUIC</strong> và <strong>chặn quảng cáo/tracker</strong> trong một ứng dụng siêu nhẹ — không cần quyền Admin khi dùng hằng ngày.",
       cta_setup: "Tải Bộ Cài Windows (.exe)",
-      cta_portable: "Bản Portable 1 File (~358 KB)",
+      cta_portable: "Bản Portable 1 File (~363 KB)",
       pill_nolog: "0% ghi đĩa",
       pill_ram: "~5 MB chạy nền",
       pill_ab: "hostsVN + Custom URL",
@@ -720,6 +757,12 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
       g2_t: "Bật khiên & Tự kiểm tra", g2_d: "Bấm <strong>BẬT BẢO VỆ</strong> ở tab Bảo vệ. Bấm <strong>Tự kiểm tra</strong> ngay cạnh mục DoH để xác nhận DoH và AdBlock <code>403 Loopback OK</code>.",
       g3_t: "Tăng cường chặn quảng cáo Việt Nam", g3_d: "Vào tab <strong>Chặn QC</strong> -> chọn <strong>hostsVN</strong> (hoặc dán Link bộ lọc tùy chỉnh) -> bấm <strong>Tải / Cập nhật</strong>. Dùng <code>@@domain.com</code> để mở ngoại lệ nhanh.",
       g4_t: "Tùy chọn Admin & Khôi phục sự cố", g4_d: "Chỉ cần bấm <strong>Chạy quyền Admin</strong> nếu muốn bật DoH toàn Windows 11 hoặc Firewall chặn UDP 443. Nếu cúp điện kẹt Proxy, chạy <code>NologGuard.exe --recover</code>.",
+      os_t: "Tương thích Windows (7 / 8 / 8.1 / 10 / 11 — Bản 64-bit x64)",
+      os_h1: "Hệ điều hành (x64)", os_h2: "Hỗ trợ?", os_h3: "Ghi chú kỹ thuật",
+      os_w11_s: "Có (100% tính năng)", os_w11_d: "Chạy sẵn không cần cài thêm gì; hỗ trợ cả Windows 11 System-wide DoH, HTTP/2 DoH, cắt SNI & Firewall QUIC.",
+      os_w10_s: "Có (Chính thức)", os_w10_d: "Đầy đủ Proxy DoH HTTP/2 (1703+), cắt SNI, AdBlock & Firewall QUIC (bản Win 10 <1903 cần cài thêm .NET 4.8; không có Win11 System DoH).",
+      os_w7_s: "Giới hạn / Chưa test", os_w7_d: "Chỉ chạy được nếu máy x64 tự cài thêm .NET Framework 4.8 + vá TLS 1.2 (KB3140245); WinHTTP lùi về HTTP/1.1 DoH và không có System DoH.",
+      os_w8_s: "Không hỗ trợ", os_w8_d: ".NET Framework 4.8 không hỗ trợ Windows 8.0 và NologGuard chỉ phát hành bản 64-bit (x64).",
       footer_by: "Một dự án mã nguồn mở miễn phí (MIT) tạo bởi",
       footer_priv: "Chính sách riêng tư",
       footer_policy_priv: "Không thu thập lịch sử duyệt web; chỉ kết nối tới DoH / bộ lọc do người dùng chọn."
@@ -732,9 +775,9 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
       nav_guide: "User Guide",
       hero_badge: "Open-Source MIT • Zero Kernel Drivers • 32 Languages",
       hero_title: "1-Click Windows Privacy Shield — Keep Your Real IP & Native Speed",
-      hero_sub: "NologGuard combines <strong>Bootstrapped HTTP/2 DoH</strong>, <strong>TLS SNI Fragmentation to obscure visited domains from ISP DPI</strong>, <strong>QUIC leak bypass</strong>, and <strong>domain-level AdBlock</strong> in a tiny ~358 KB app — zero Admin needed daily.",
+      hero_sub: "NologGuard combines <strong>Bootstrapped HTTP/2 DoH</strong>, <strong>TLS SNI Fragmentation to obscure visited domains from ISP DPI</strong>, <strong>QUIC leak bypass</strong>, and <strong>domain-level AdBlock</strong> in a tiny ~363 KB app — zero Admin needed daily.",
       cta_setup: "Download Windows Installer (.exe)",
-      cta_portable: "Portable Single-File (~358 KB)",
+      cta_portable: "Portable Single-File (~363 KB)",
       pill_nolog: "Zero disk writes",
       pill_ram: "~5 MB RAM in Tray",
       pill_ab: "hostsVN + Custom URL",
@@ -797,6 +840,12 @@ footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: 
       g2_t: "Enable & Self-Check", g2_d: "Click <strong>ENABLE SHIELD</strong> on the Shield tab, then click <strong>Self-Check</strong> to verify live DoH latency and <code>403 Loopback OK</code>.",
       g3_t: "Upgrade AdBlock Filters", g3_d: "Open the <strong>AdBlock</strong> tab -> pick <strong>hostsVN</strong> / <strong>HaGeZi</strong> or paste a Custom Filter URL -> click <strong>Update List</strong>.",
       g4_t: "Optional Admin & Recovery", g4_d: "Only click <strong>Relaunch as Admin</strong> for Windows 11 System DoH or UDP 443 Firewall blocking. Run <code>NologGuard.exe --recover</code> anytime to reset proxy.",
+      os_t: "Windows Compatibility (Windows 7 / 8 / 8.1 / 10 / 11 — 64-bit x64)",
+      os_h1: "Operating System (x64)", os_h2: "Supported?", os_h3: "Technical Notes",
+      os_w11_s: "Yes (100% Features)", os_w11_d: "Runs out of the box with .NET 4.8 preinstalled; includes Windows 11 System-wide DoH, HTTP/2 DoH, SNI Split & Firewall QUIC.",
+      os_w10_s: "Yes (Official)", os_w10_d: "Full HTTP/2 Proxy DoH (1703+), SNI Split, AdBlock & Firewall QUIC (builds below 1903 need .NET 4.8; Win11 System DoH excluded).",
+      os_w7_s: "Limited / Untested", os_w7_d: "Requires manual .NET Framework 4.8 + TLS 1.2 patch (KB3140245) on x64; WinHTTP falls back to HTTP/1.1 DoH without System DoH.",
+      os_w8_s: "Not Supported", os_w8_d: ".NET Framework 4.8 does not support Windows 8.0, and NologGuard targets 64-bit (x64) Windows only.",
       footer_by: "A free MIT open-source project created by",
       footer_priv: "Privacy Policy",
       footer_policy_priv: "Zero browsing logs written to disk; connects only to user-configured DoH/filter URLs."

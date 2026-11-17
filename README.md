@@ -59,11 +59,25 @@ Normally, even when you visit an `https://` website, your ISP can still tell **w
 
 ---
 
+## System Requirements & Windows Compatibility
+
+NologGuard is compiled as a native `x64` `.NET Framework 4.8` desktop app (zero kernel drivers).
+
+| OS Version (`x64`) | Supported? | Details |
+| :--- | :--- | :--- |
+| **Windows 11** | **Yes (100% Supported)** | Works out of the box with `.NET Framework 4.8` preinstalled. Supports all features including HTTP/2 DoH, SNI splitting, AdBlock, QUIC Firewall, and native **Windows 11 System-wide DoH**. |
+| **Windows 10** | **Yes (Supported)** | Works with full Proxy HTTP/2 DoH (Win10 1703+), SNI splitting, AdBlock, and Firewall QUIC block. Builds older than Win10 1903 may require installing [.NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48). *(System-wide Win11 DoH templates are Windows 11 only; browser Proxy DoH still works fully on Win10).* |
+| **Windows 8.1 & Windows 7 SP1** | **Limited / Untested** | Not officially supported/tested. Runs `.NET 4.8` builds only on `x64` if you manually install **.NET Framework 4.8** + Windows **TLS 1.2** default updates (`KB3140245`). WinHTTP on Win 7/8.1 lacks HTTP/2 (falls back to HTTP/1.1 + TLS 1.2 DoH) and lacks Win11 System DoH. |
+| **Windows 8.0** | **No** | `.NET Framework 4.8` does not support Windows 8.0 (upgrade to Windows 8.1+ required). |
+| **32-bit Windows (`x86`)** | **No** | Binaries and installer target 64-bit (`x64`) Windows only. |
+
+---
+
 ## User Guide
 
 ### Installation
 * **Installer (`NologGuard-Setup.exe`):** Download from [GitHub Releases](https://github.com/NologX-com/NologGuard/releases), run and follow the wizard (or install silently with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
-* **Portable (`NologGuard.exe`):** Single ~260 KB standalone executable — zero installation, zero drivers, zero external runtimes required on Windows 10/11.
+* **Portable (`NologGuard.exe`):** Single ~363 KB standalone executable — zero installation, zero drivers, zero external runtimes required on Windows 10/11.
 
 ### Daily Use (Standard `USER` Mode — Recommended)
 1. Launch **NologGuard** (no Administrator prompt needed for browser protection).

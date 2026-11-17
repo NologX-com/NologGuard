@@ -2,7 +2,7 @@
 
 **Tạo bởi [NologX.com](https://nologx.com)** • [🌐 Trang Giới Thiệu (Landing Page)](https://nologx-com.github.io/NologGuard/) • [🇬🇧 English README](README.md) • [🔒 Chính sách quyền riêng tư](PRIVACY.md)
 
-**Công cụ 1-nút-bấm bảo vệ quyền riêng tư khi lướt web trên Windows** — Tích hợp **mã hóa DNS (DoH HTTP/2)**, **cắt nhỏ gói tin TLS SNI để giấu tên miền truy cập khỏi hệ thống lọc ISP**, **chặn/bỏ qua QUIC**, **chặn quảng cáo & tracker**, và **danh sách ngoại lệ** trong một ứng dụng gọn nhẹ (~260 KB), giữ nguyên IP thật và 100% tốc độ mạng gốc.
+**Công cụ 1-nút-bấm bảo vệ quyền riêng tư khi lướt web trên Windows** — Tích hợp **mã hóa DNS (DoH HTTP/2)**, **cắt nhỏ gói tin TLS SNI để giấu tên miền truy cập khỏi hệ thống lọc ISP**, **chặn/bỏ qua QUIC**, **chặn quảng cáo & tracker**, và **danh sách ngoại lệ** trong một ứng dụng gọn nhẹ (~363 KB), giữ nguyên IP thật và 100% tốc độ mạng gốc.
 
 ---
 
@@ -57,11 +57,25 @@ Bình thường khi bạn mở một trang web `https://`, dù nội dung bên t
 
 ---
 
+## Yêu cầu hệ thống & Tương thích Windows (7 / 8 / 8.1 / 10 / 11)
+
+NologGuard được biên dịch thuần **`x64`** trên nền **`.NET Framework 4.8`** (không cài driver kernel).
+
+| Phiên bản Windows (`x64`) | Chạy được không? | Chi tiết tương thích |
+| :--- | :--- | :--- |
+| **Windows 11** | **Có — Hỗ trợ đầy đủ 100%** | Chạy ngay không cần cài thêm thành phần nào (.NET 4.8 có sẵn). Hỗ trợ trọn bộ DoH HTTP/2, cắt SNI, AdBlock, Firewall QUIC và **Windows 11 System-wide DoH**. |
+| **Windows 10** | **Có — Hỗ trợ chính thức** | Chạy đầy đủ Proxy DoH HTTP/2 (Win 10 1703+), cắt TLS SNI, AdBlock và Firewall chặn UDP 443. Bản Win 10 cũ hơn 1903 có thể cần cài thêm [.NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48). *(Mục System-wide DoH là API riêng của Windows 11; trình duyệt qua Proxy `127.0.0.1:8899` trên Win 10 vẫn dùng DoH bình thường).* |
+| **Windows 8.1 & Windows 7 SP1** | **Hỗ trợ giới hạn / Chưa test thực tế** | Không khuyến nghị do Microsoft đã ngừng hỗ trợ. Bản `x64` chỉ chạy được nếu máy đã tự cài **`.NET Framework 4.8`** + bản vá **TLS 1.2** WinHTTP (`KB3140245`); đồng thời DoH qua WinHTTP sẽ lùi về HTTP/1.1 + TLS 1.2 (không có HTTP/2 hay System DoH của Win 11). |
+| **Windows 8.0 (chưa lên 8.1)** | **Không** | `.NET Framework 4.8` không hỗ trợ Windows 8.0. |
+| **Mọi bản Windows 32-bit (`x86`)** | **Không** | Bộ cài & file `.exe` chỉ hỗ trợ Windows 64-bit (`x64`). |
+
+---
+
 ## Hướng dẫn sử dụng chi tiết
 
 ### 1. Cài đặt hoặc chạy ngay
 * **Bản cài đặt (`NologGuard-Setup.exe`):** Tải từ [GitHub Releases](https://github.com/NologX-com/NologGuard/releases), mở cài đặt bình thường (hoặc cài ngầm với `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
-* **Bản Portable (`NologGuard.exe`):** Chỉ 1 file ~260 KB chạy thẳng trên Windows 10/11, không cần cài driver hay phần mềm phụ trợ.
+* **Bản Portable (`NologGuard.exe`):** Chỉ 1 file ~363 KB chạy thẳng trên Windows 10/11, không cần cài driver hay phần mềm phụ trợ.
 
 ### 2. Bật bảo vệ hằng ngày (Chỉ 3 bước, KHÔNG cần quyền Admin)
 1. Mở **NologGuard** (mặc định chạy quyền `USER`, an toàn và không xung đột game/anti-cheat).
