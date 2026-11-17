@@ -55,7 +55,9 @@ namespace NologGuard
             info.IsTlsHandshake = true;
             info.ExpectedRecordTotalLength = GetExpectedTlsRecordLength(buf, length);
 
-            int limit = Math.Min(length, info.ExpectedRecordTotalLength);
+            int hsLen = (buf[6] << 16) | (buf[7] << 8) | buf[8];
+            int hsEnd = 9 + hsLen;
+            int limit = Math.Min(length, Math.Min(info.ExpectedRecordTotalLength, hsEnd));
             int pos = 9;
 
             if (pos + 34 > limit) return info;

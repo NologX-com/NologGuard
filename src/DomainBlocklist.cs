@@ -137,27 +137,106 @@ namespace NologGuard
             get { return Path.Combine(AppConfig.AppDataDir, "blocklist_cache.txt"); }
         }
 
-        public static DomainBlocklist Build(string presetId, IEnumerable<string> customRules)
+        public static string GetCacheFilePath(string presetId)
         {
-            DomainBlocklist bl = new DomainBlocklist();
-            bl.LoadLines(StarterDomains);
+            return GetCacheFilePath(presetId, AppConfig.AppDataDir);
+        }
 
-            if (!string.Equals(presetId, "starter", StringComparison.OrdinalIgnoreCase) &&
-                File.Exists(CacheFilePath))
+        public static string GetCacheFilePath(string presetId, string cacheDir)
+        {
+            string raw = string.IsNullOrEmpty(presetId) ? "custom" : presetId.Trim().ToLowerInvariant();
+            StringBuilder sb = new StringBuilder(raw.Length);
+            for (int i = 0; i < raw.Length; i++)
+            {
+                char c = raw[i];
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_')
+                {
+                    sb.Append(c);
+                }
+            }
+            string safe = sb.Length > 0 ? sb.ToString() : "custom";
+            return Path.Combine(cacheDir, "blocklist_" + safe + ".txt");
+        }
+
+        public static bool HasCachedPreset(string presetId)
+        {
+            if (string.IsNullOrEmpty(presetId) || string.Equals(presetId, "starter", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return ResolveExistingCacheFile(presetId, AppConfig.AppDataDir) != null;
+        }
+
+        internal static string ResolveExistingCacheFile(string presetId, string cacheDir)
+        {
+            if (string.IsNullOrEmpty(cacheDir) || !Directory.Exists(cacheDir)) return null;
+
+            string perPreset = GetCacheFilePath(presetId, cacheDir);
+            if (File.Exists(perPreset))
+            {
+                return perPreset;
+            }
+
+            string legacy = Path.Combine(cacheDir, "blocklist_cache.txt");
+            if (File.Exists(legacy))
             {
                 try
                 {
-                    using (StreamReader sr = new StreamReader(CacheFilePath, Encoding.UTF8))
+                    string[] existing = Directory.GetFiles(cacheDir, "blocklist_*.txt");
+                    bool hasNamedCache = false;
+                    for (int i = 0; i < existing.Length; i++)
                     {
-                        string line;
-                        while ((line = sr.ReadLine()) != null)
+                        if (!string.Equals(Path.GetFileName(existing[i]), "blocklist_cache.txt", StringComparison.OrdinalIgnoreCase))
                         {
-                            bl.AddRuleLine(line);
+                            hasNamedCache = true;
+                            break;
                         }
+                    }
+
+                    if (!hasNamedCache)
+                    {
+                        File.Move(legacy, perPreset);
+                        return perPreset;
                     }
                 }
                 catch
                 {
+                    return legacy;
+                }
+            }
+
+            return null;
+        }
+
+        public static DomainBlocklist Build(string presetId, IEnumerable<string> customRules)
+        {
+            return Build(presetId, customRules, AppConfig.AppDataDir);
+        }
+
+        public static DomainBlocklist Build(string presetId, IEnumerable<string> customRules, string cacheDir)
+        {
+            DomainBlocklist bl = new DomainBlocklist();
+            bl.LoadLines(StarterDomains);
+
+            if (!string.Equals(presetId, "starter", StringComparison.OrdinalIgnoreCase))
+            {
+                string cacheFile = ResolveExistingCacheFile(presetId, cacheDir);
+                if (!string.IsNullOrEmpty(cacheFile) && File.Exists(cacheFile))
+                {
+                    try
+                    {
+                        using (StreamReader sr = new StreamReader(cacheFile, Encoding.UTF8))
+                        {
+                            string line;
+                            while ((line = sr.ReadLine()) != null)
+                            {
+                                bl.AddRuleLine(line);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
                 }
             }
 
@@ -421,30 +500,44 @@ namespace NologGuard
             return true;
         }
 
-        public static async Task<Tuple<bool, int, string>> DownloadPresetToCacheAsync(string url, CancellationToken ct)
+        public static Task<Tuple<bool, int, string>> DownloadPresetToCacheAsync(string url, CancellationToken ct)
+        {
+            return DownloadPresetToCacheAsync("custom", url, ct);
+        }
+
+        public static async Task<Tuple<bool, int, string>> DownloadPresetToCacheAsync(string presetId, string url, CancellationToken ct)
         {
             if (string.IsNullOrEmpty(url))
             {
                 return Tuple.Create(true, StarterDomains.Length, "Using built-in starter list.");
             }
 
+            string targetPath = GetCacheFilePath(presetId);
+            string tmpPath = targetPath + ".tmp";
             try
             {
                 const int maxBytes = 25 * 1024 * 1024;
                 byte[] bytes = await WinHttpHelper.GetBytesAsync(url, maxBytes, ct).ConfigureAwait(false);
 
-                string dir = Path.GetDirectoryName(CacheFilePath);
+                string dir = Path.GetDirectoryName(targetPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
 
-                File.WriteAllBytes(CacheFilePath, bytes);
-                DomainBlocklist parsed = Build("custom", null);
+                File.WriteAllBytes(tmpPath, bytes);
+                if (File.Exists(targetPath))
+                {
+                    File.Delete(targetPath);
+                }
+                File.Move(tmpPath, targetPath);
+
+                DomainBlocklist parsed = Build(presetId, null);
                 return Tuple.Create(true, parsed.BlockedRuleCount, "OK");
             }
             catch (Exception ex)
             {
+                try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
                 return Tuple.Create(false, 0, ex.Message);
             }
         }

@@ -130,15 +130,21 @@ namespace NologGuard
         {
             List<string> warnings = new List<string>();
             BackupState state = LoadBackupState() ?? new BackupState();
+            bool admin = IsAdministrator();
 
             if (config.ApplySystemProxy)
             {
                 ApplySystemProxyInternal(state, activePort, new DomainMatcher(config.Whitelist).BuildWindowsProxyOverride());
             }
+            else if (state.ProxyModified)
+            {
+                RestoreSystemProxyInternal(state);
+                state.ProxyModified = false;
+            }
 
             if (config.BlockQuicFirewall)
             {
-                if (IsAdministrator())
+                if (admin)
                 {
                     if (SetQuicFirewallBlock(true))
                     {
@@ -154,15 +160,35 @@ namespace NologGuard
                     warnings.Add("QUIC Firewall block skipped (Administrator required)");
                 }
             }
+            else if (state.FirewallRuleAdded && admin)
+            {
+                SetQuicFirewallBlock(false);
+                state.FirewallRuleAdded = false;
+            }
 
             if (config.ApplySystemDoh)
             {
-                if (IsAdministrator())
+                if (admin)
                 {
                     DohProvider provider = DohProvider.FindById(config.DohProviderId, config.CustomDohUrl);
-                    if (provider.SystemDnsIpv4 != null && provider.SystemDnsIpv4.Length > 0)
+                    bool hasSysIp = (provider.SystemDnsIpv4 != null && provider.SystemDnsIpv4.Length > 0) ||
+                                    (provider.SystemDnsIpv6 != null && provider.SystemDnsIpv6.Length > 0);
+                    if (hasSysIp)
                     {
                         ApplySystemDohInternal(state, provider);
+                        if (!IsWindows11OrNewer())
+                        {
+                            warnings.Add("Adapter DNS updated (native OS DoH encryption requires Windows 11; proxy DoH active)");
+                        }
+                    }
+                    else
+                    {
+                        if (state.SystemDohModified)
+                        {
+                            RestoreSystemDohInternal(state);
+                            state.SystemDohModified = false;
+                        }
+                        warnings.Add("System-wide DoH requires a built-in or IP-based port-443 DoH server (proxy DoH active)");
                     }
                 }
                 else
@@ -170,9 +196,21 @@ namespace NologGuard
                     warnings.Add("System-wide DoH skipped (Administrator required; proxy DoH active)");
                 }
             }
+            else if (state.SystemDohModified && admin)
+            {
+                RestoreSystemDohInternal(state);
+                state.SystemDohModified = false;
+            }
 
             warningMessage = warnings.Count > 0 ? string.Join(" | ", warnings.ToArray()) : null;
-            SaveBackupState(state);
+            if (!state.ProxyModified && !state.FirewallRuleAdded && !state.SystemDohModified)
+            {
+                DeleteBackupState();
+            }
+            else
+            {
+                SaveBackupState(state);
+            }
         }
 
         public static void RestoreAll()
@@ -409,7 +447,10 @@ namespace NologGuard
                 SaveBackupState(state);
             }
 
-            RegisterDohTemplates(provider);
+            if (IsWindows11OrNewer())
+            {
+                RegisterDohTemplates(provider);
+            }
 
             for (int i = 0; i < adapters.Count; i++)
             {
@@ -564,11 +605,14 @@ namespace NologGuard
                 ProcessStartInfo psi = new ProcessStartInfo("netsh.exe", args);
                 psi.CreateNoWindow = true;
                 psi.UseShellExecute = false;
-                psi.RedirectStandardOutput = true;
-                psi.RedirectStandardError = true;
                 using (Process proc = Process.Start(psi))
                 {
-                    proc.WaitForExit(5000);
+                    if (proc == null) return -1;
+                    if (!proc.WaitForExit(5000))
+                    {
+                        try { proc.Kill(); } catch { }
+                        return -1;
+                    }
                     return proc.ExitCode;
                 }
             }

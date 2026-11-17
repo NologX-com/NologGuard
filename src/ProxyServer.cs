@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -33,6 +34,7 @@ namespace NologGuard
 
         private DomainMatcher _matcher;
         private DomainBlocklist _blocklist;
+        private string _blocklistSignature;
         private bool _enableAdBlock;
         private SniSplitMode _splitMode;
         private int _chunkSize;
@@ -98,6 +100,7 @@ namespace NologGuard
             lock (_configLock)
             {
                 _blocklist = blocklist ?? new DomainBlocklist();
+                _blocklistSignature = null;
                 _enableAdBlock = enabled;
             }
         }
@@ -105,18 +108,62 @@ namespace NologGuard
         public void UpdateSettings(AppConfig config)
         {
             if (config == null) return;
-            DomainBlocklist newBlocklist = DomainBlocklist.Build(config.BlocklistPreset, config.CustomBlockRules);
+
+            string sig = ComputeBlocklistSignature(config);
+            DomainBlocklist reusedBlocklist = null;
+            lock (_configLock)
+            {
+                if (_blocklist != null && string.Equals(_blocklistSignature, sig, StringComparison.Ordinal))
+                {
+                    reusedBlocklist = _blocklist;
+                }
+            }
+
+            DomainBlocklist effectiveBlocklist = reusedBlocklist ?? DomainBlocklist.Build(config.BlocklistPreset, config.CustomBlockRules);
             DomainMatcher newMatcher = new DomainMatcher(config.Whitelist);
+
             lock (_configLock)
             {
                 _matcher = newMatcher;
-                _blocklist = newBlocklist;
+                _blocklist = effectiveBlocklist;
+                _blocklistSignature = sig;
                 _enableAdBlock = config.EnableAdBlock;
                 _splitMode = config.SplitMode;
                 _chunkSize = config.ChunkSize;
                 _chunkDelayMs = config.ChunkDelayMs;
                 _logDomainsInUi = config.LogDomainsInUi;
             }
+        }
+
+        private static string ComputeBlocklistSignature(AppConfig config)
+        {
+            string preset = (config.BlocklistPreset ?? "starter").Trim().ToLowerInvariant();
+            string stamp = "builtin";
+            if (!string.Equals(preset, "starter", StringComparison.Ordinal))
+            {
+                string path = DomainBlocklist.ResolveExistingCacheFile(preset, AppConfig.AppDataDir);
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                {
+                    try
+                    {
+                        FileInfo fi = new FileInfo(path);
+                        stamp = fi.Length.ToString() + ":" + fi.LastWriteTimeUtc.Ticks.ToString();
+                    }
+                    catch
+                    {
+                        stamp = "err";
+                    }
+                }
+                else
+                {
+                    stamp = "missing";
+                }
+            }
+
+            string custom = config.CustomBlockRules != null
+                ? string.Join("\n", config.CustomBlockRules.ToArray())
+                : string.Empty;
+            return preset + "|" + stamp + "|" + custom;
         }
 
         public void Start(int port)
@@ -150,8 +197,15 @@ namespace NologGuard
 
             if (_acceptLoop != null)
             {
-                try { _acceptLoop.Wait(1000); } catch { }
+                try { _acceptLoop.Wait(300); } catch { }
                 _acceptLoop = null;
+            }
+
+            int spin = 0;
+            while (Interlocked.Read(ref _activeConnections) > 0 && spin < 15)
+            {
+                Thread.Sleep(10);
+                spin++;
             }
 
             if (cts != null)
@@ -228,10 +282,22 @@ namespace NologGuard
         {
             Interlocked.Increment(ref _activeConnections);
             TcpClient upstream = null;
+            CancellationTokenRegistration cancelReg = default(CancellationTokenRegistration);
 
             try
             {
+                cancelReg = ct.Register(delegate()
+                {
+                    try { client.Close(); } catch { }
+                    TcpClient up = upstream;
+                    if (up != null)
+                    {
+                        try { up.Close(); } catch { }
+                    }
+                });
+
                 client.NoDelay = true;
+                try { client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true); } catch { }
                 client.ReceiveTimeout = 30000;
                 client.SendTimeout = 30000;
 
@@ -307,8 +373,13 @@ namespace NologGuard
                     await SendErrorResponseAsync(clientStream, "502 Bad Gateway").ConfigureAwait(false);
                     return;
                 }
+                if (ct.IsCancellationRequested)
+                {
+                    return;
+                }
 
                 upstream.NoDelay = true;
+                try { upstream.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true); } catch { }
                 NetworkStream upstreamStream = upstream.GetStream();
 
                 if (string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase))
@@ -320,6 +391,7 @@ namespace NologGuard
                     header = null;
 
                     byte[] initialBuf = RentBuffer(LargeScratchPool, ref _largeScratchPoolCount, LargeScratchBufSize);
+                    bool initialBufTainted = false;
                     try
                     {
                         int totalRead = 0;
@@ -334,6 +406,10 @@ namespace NologGuard
                         else
                         {
                             totalRead = await ReadWithTimeoutAsync(clientStream, initialBuf, 0, initialBuf.Length, 5000, ct).ConfigureAwait(false);
+                            if (totalRead < 0)
+                            {
+                                initialBufTainted = true;
+                            }
                         }
 
                         if (totalRead <= 0)
@@ -348,7 +424,12 @@ namespace NologGuard
                             while (totalRead < cap)
                             {
                                 int more = await ReadWithTimeoutAsync(clientStream, initialBuf, totalRead, cap - totalRead, 1000, ct).ConfigureAwait(false);
-                                if (more <= 0) break;
+                                if (more < 0)
+                                {
+                                    initialBufTainted = true;
+                                    break;
+                                }
+                                if (more == 0) break;
                                 totalRead += more;
                             }
                         }
@@ -402,7 +483,10 @@ namespace NologGuard
                     }
                     finally
                     {
-                        ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, initialBuf);
+                        if (!initialBufTainted)
+                        {
+                            ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, initialBuf);
+                        }
                         initialBuf = null;
                     }
                 }
@@ -435,6 +519,7 @@ namespace NologGuard
             }
             finally
             {
+                try { cancelReg.Dispose(); } catch { }
                 Interlocked.Decrement(ref _activeConnections);
                 if (upstream != null)
                 {
@@ -456,14 +541,15 @@ namespace NologGuard
                 {
                     using (CancellationTokenSource timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
                     {
-                        timeoutCts.CancelAfter(6000);
                         Task connectTask = tcp.ConnectAsync(ip, port);
                         Task delayTask = Task.Delay(6000, timeoutCts.Token);
                         Task done = await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false);
+                        timeoutCts.Cancel();
                         if (done == connectTask && !connectTask.IsFaulted && tcp.Connected)
                         {
                             return tcp;
                         }
+                        ObserveFault(connectTask);
                     }
                 }
                 catch
@@ -528,6 +614,20 @@ namespace NologGuard
             }
         }
 
+        private static void ObserveFault(Task task)
+        {
+            if (task == null) return;
+            task.ContinueWith(
+                delegate(Task t) { var ignored = t.Exception; },
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        /// <summary>
+        /// Reads from stream with timeout without leaking timers.
+        /// Returns &gt;0 bytes read, 0 on clean EOF, or -1 on timeout (caller must not recycle buffer while readTask is pending).
+        /// </summary>
         private static async Task<int> ReadWithTimeoutAsync(
             NetworkStream stream,
             byte[] buffer,
@@ -536,14 +636,19 @@ namespace NologGuard
             int timeoutMs,
             CancellationToken ct)
         {
-            Task<int> readTask = stream.ReadAsync(buffer, offset, count, ct);
-            Task delayTask = Task.Delay(timeoutMs, ct);
-            Task winner = await Task.WhenAny(readTask, delayTask).ConfigureAwait(false);
-            if (winner != readTask)
+            using (CancellationTokenSource delayCts = CancellationTokenSource.CreateLinkedTokenSource(ct))
             {
-                return 0;
+                Task<int> readTask = stream.ReadAsync(buffer, offset, count, ct);
+                Task delayTask = Task.Delay(timeoutMs, delayCts.Token);
+                Task winner = await Task.WhenAny(readTask, delayTask).ConfigureAwait(false);
+                if (winner != readTask)
+                {
+                    ObserveFault(readTask);
+                    return -1;
+                }
+                delayCts.Cancel();
+                return await readTask.ConfigureAwait(false);
             }
-            return await readTask.ConfigureAwait(false);
         }
 
         private sealed class HttpHeaderRead
@@ -558,6 +663,7 @@ namespace NologGuard
         private static async Task<HttpHeaderRead> ReadHttpRequestHeaderAsync(NetworkStream stream, CancellationToken ct)
         {
             byte[] buf = RentBuffer(LargeScratchPool, ref _largeScratchPoolCount, LargeScratchBufSize);
+            bool tainted = false;
             try
             {
                 int total = 0;
@@ -566,7 +672,12 @@ namespace NologGuard
                 while (total < buf.Length)
                 {
                     int read = await ReadWithTimeoutAsync(stream, buf, total, buf.Length - total, 10000, ct).ConfigureAwait(false);
-                    if (read <= 0) return null;
+                    if (read < 0)
+                    {
+                        tainted = true;
+                        return null;
+                    }
+                    if (read == 0) return null;
                     total += read;
 
                     headerEnd = FindHeaderTerminator(buf, total);
@@ -601,7 +712,10 @@ namespace NologGuard
             }
             finally
             {
-                ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, buf);
+                if (!tainted)
+                {
+                    ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, buf);
+                }
             }
         }
 

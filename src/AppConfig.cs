@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -20,6 +22,7 @@ namespace NologGuard
         public string Id { get; private set; }
         public string DisplayName { get; private set; }
         public string Host { get; private set; }
+        public ushort Port { get; private set; }
         public string Path { get; private set; }
         public string[] BootstrapIps { get; private set; }
         public string[] SystemDnsIpv4 { get; private set; }
@@ -33,10 +36,24 @@ namespace NologGuard
             string[] bootstrapIps,
             string[] systemDnsIpv4,
             string[] systemDnsIpv6)
+            : this(id, displayName, host, 443, path, bootstrapIps, systemDnsIpv4, systemDnsIpv6)
+        {
+        }
+
+        public DohProvider(
+            string id,
+            string displayName,
+            string host,
+            ushort port,
+            string path,
+            string[] bootstrapIps,
+            string[] systemDnsIpv4,
+            string[] systemDnsIpv6)
         {
             Id = id;
             DisplayName = displayName;
             Host = host;
+            Port = port == 0 ? (ushort)443 : port;
             Path = path;
             BootstrapIps = bootstrapIps;
             SystemDnsIpv4 = systemDnsIpv4;
@@ -45,7 +62,11 @@ namespace NologGuard
 
         public string Url
         {
-            get { return "https://" + Host + Path; }
+            get
+            {
+                string authority = Port == 443 ? Host : (Host + ":" + Port);
+                return "https://" + authority + Path;
+            }
         }
 
         public static readonly DohProvider[] Presets = new DohProvider[]
@@ -101,15 +122,42 @@ namespace NologGuard
                     string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase) &&
                     !string.IsNullOrEmpty(uri.Host))
                 {
+                    ushort port = (ushort)(uri.Port > 0 && uri.Port <= 65535 ? uri.Port : 443);
                     string path = string.IsNullOrEmpty(uri.PathAndQuery) ? "/dns-query" : uri.PathAndQuery;
+                    string cleanHost = DomainMatcher.NormalizeHost(uri.Host);
+
+                    string[] boot = new string[0];
+                    string[] sysV4 = new string[0];
+                    string[] sysV6 = new string[0];
+
+                    IPAddress ipLit;
+                    if (IPAddress.TryParse(cleanHost, out ipLit))
+                    {
+                        string ipStr = ipLit.ToString();
+                        boot = new string[] { ipStr };
+                        if (port == 443)
+                        {
+                            if (ipLit.AddressFamily == AddressFamily.InterNetwork)
+                            {
+                                sysV4 = new string[] { ipStr };
+                            }
+                            else if (ipLit.AddressFamily == AddressFamily.InterNetworkV6)
+                            {
+                                sysV6 = new string[] { ipStr };
+                            }
+                        }
+                    }
+
+                    string labelHost = port == 443 ? uri.Host : (uri.Host + ":" + port);
                     return new DohProvider(
                         "custom",
-                        "Custom (" + uri.Host + ")",
+                        "Custom (" + labelHost + ")",
                         uri.Host,
+                        port,
                         path,
-                        new string[0],
-                        new string[0],
-                        new string[0]);
+                        boot,
+                        sysV4,
+                        sysV6);
                 }
             }
 
@@ -128,8 +176,8 @@ namespace NologGuard
     [DataContract]
     public sealed class AppConfig
     {
-        public const string AppVersion = "1.2.2";
-        public const string UserAgent = "NologGuard/1.2.2 (NologX.com)";
+        public const string AppVersion = "1.2.3";
+        public const string UserAgent = "NologGuard/1.2.3 (NologX.com)";
         public const string GitHubRepo = "NologX-com/NologGuard";
 
         [DataMember] public string Language { get; set; }

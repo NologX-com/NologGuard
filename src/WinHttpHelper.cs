@@ -101,8 +101,8 @@ namespace NologGuard
                 WinHttpQueryHeaders(req, WinHttpQueryFlagNumber | WinHttpQueryStatusCode, null, out status, ref len, ref idx);
                 statusCode = status;
 
-                byte[] buf = new byte[16384];
-                using (MemoryStream ms = new MemoryStream())
+                byte[] buf = new byte[maxResponseBytes <= 65536 ? 4096 : 16384];
+                using (MemoryStream ms = new MemoryStream(Math.Min(maxResponseBytes, 512)))
                 {
                     int read;
                     while (WinHttpReadData(req, buf, buf.Length, out read) && read > 0)

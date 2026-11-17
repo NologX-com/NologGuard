@@ -56,11 +56,22 @@ namespace NologGuard
         public static readonly Brush TextSecondary = Freeze(new SolidColorBrush(TextSecondaryColor));
         public static readonly Brush TextMuted = Freeze(new SolidColorBrush(TextMutedColor));
 
+        public static readonly Brush PowerOnBg = Freeze(new System.Windows.Media.LinearGradientBrush(
+            Color.FromRgb(16, 185, 129),
+            Color.FromRgb(5, 150, 105),
+            90.0));
+        public static readonly Brush PowerOnBorder = Freeze(new SolidColorBrush(Color.FromRgb(110, 231, 183)));
+        public static readonly Brush PowerOffBg = Freeze(new System.Windows.Media.LinearGradientBrush(
+            Color.FromRgb(37, 99, 235),
+            Color.FromRgb(29, 78, 216),
+            90.0));
+        public static readonly Brush PowerOffBorder = Freeze(new SolidColorBrush(Color.FromRgb(96, 165, 250)));
+
         public static readonly FontFamily UiFont = new FontFamily(
             "Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, Yu Gothic UI, Malgun Gothic, Leelawadee UI, Nirmala UI, Microsoft Sans Serif");
         public static readonly FontFamily MonoFont = new FontFamily("Cascadia Mono, Consolas, Courier New");
 
-        private static Brush Freeze(SolidColorBrush br)
+        private static Brush Freeze(Brush br)
         {
             br.Freeze();
             return br;

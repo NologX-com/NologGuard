@@ -20,6 +20,8 @@ namespace NologGuard
     /// </summary>
     public sealed class DohResolver : IDnsResolver, IDisposable
     {
+        private static readonly IPAddress[] EmptyAddresses = new IPAddress[0];
+
         private readonly ConcurrentDictionary<string, CacheEntry> _cache =
             new ConcurrentDictionary<string, CacheEntry>(StringComparer.OrdinalIgnoreCase);
 
@@ -145,11 +147,18 @@ namespace NologGuard
 
             List<IPAddress> list = new List<IPAddress>();
             int ttl = 60;
+            bool cacheNegative = false;
 
             if (aRes != null && aRes.Addresses.Count > 0)
             {
                 list.AddRange(aRes.Addresses);
                 ttl = aRes.MinTtlSeconds;
+            }
+            else if (aRes != null && aRes.RCode == 3)
+            {
+                // NXDOMAIN: domain does not exist for any record type; skip redundant AAAA roundtrip.
+                cacheNegative = true;
+                ttl = 20;
             }
             else
             {
@@ -159,11 +168,25 @@ namespace NologGuard
                     list.AddRange(aaaaRes.Addresses);
                     ttl = aaaaRes.MinTtlSeconds;
                 }
+                else if (aaaaRes != null && (aaaaRes.RCode == 0 || aaaaRes.RCode == 3))
+                {
+                    cacheNegative = true;
+                    ttl = 15;
+                }
             }
 
             if (list.Count == 0)
             {
-                return new IPAddress[0];
+                if (cacheNegative)
+                {
+                    if (_cache.Count > 4096) PruneExpiredCache();
+                    _cache[host] = new CacheEntry
+                    {
+                        Addresses = EmptyAddresses,
+                        ExpiresUtc = DateTime.UtcNow.AddSeconds(ttl)
+                    };
+                }
+                return EmptyAddresses;
             }
 
             if (_cache.Count > 4096)
@@ -225,16 +248,25 @@ namespace NologGuard
                             throw new ObjectDisposedException("DohResolver");
                         }
 
-                        string headers = "Host: " + provider.Host + "\r\n" +
+                        string hostHeader = provider.Port == 443
+                            ? provider.Host
+                            : (provider.Host + ":" + provider.Port);
+                        string headers = "Host: " + hostHeader + "\r\n" +
                                          "Content-Type: application/dns-message\r\n" +
                                          "Accept: application/dns-message\r\n";
+
+                        string connectTarget = targets[i];
+                        if (connectTarget.IndexOf(':') >= 0 && !connectTarget.StartsWith("[", StringComparison.Ordinal))
+                        {
+                            connectTarget = "[" + connectTarget + "]";
+                        }
 
                         int status;
                         byte[] rawResp = WinHttpHelper.ExecuteRequest(
                             _sessionHandle,
                             "POST",
-                            targets[i],
-                            443,
+                            connectTarget,
+                            provider.Port,
                             provider.Path,
                             headers,
                             query,

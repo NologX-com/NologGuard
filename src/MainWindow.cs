@@ -22,7 +22,11 @@ namespace NologGuard
         private readonly DohResolver _resolver;
         private readonly ProxyServer _proxy;
 
+        private static ImageSource _cachedIconOn;
+        private static ImageSource _cachedIconOff;
+
         private bool _updatingUi;
+        private bool _isClosed;
         private bool _isProtected { get { return _host.IsProtected; } }
 
         private DispatcherTimer _statsTimer;
@@ -193,13 +197,25 @@ namespace NologGuard
         {
             try
             {
-                System.Drawing.Icon ico = _host != null ? _host.GetIcon(active) : null;
-                if (ico != null)
+                ImageSource cached = active ? _cachedIconOn : _cachedIconOff;
+                if (cached == null && _host != null)
                 {
-                    Icon = Imaging.CreateBitmapSourceFromHIcon(
-                        ico.Handle,
-                        Int32Rect.Empty,
-                        System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                    System.Drawing.Icon ico = _host.GetIcon(active);
+                    if (ico != null)
+                    {
+                        System.Windows.Media.Imaging.BitmapSource bmp = Imaging.CreateBitmapSourceFromHIcon(
+                            ico.Handle,
+                            Int32Rect.Empty,
+                            System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                        bmp.Freeze();
+                        if (active) _cachedIconOn = bmp;
+                        else _cachedIconOff = bmp;
+                        cached = bmp;
+                    }
+                }
+                if (cached != null)
+                {
+                    Icon = cached;
                 }
             }
             catch
@@ -1504,11 +1520,8 @@ namespace NologGuard
                 _txtStatusBadge.Text = T("status_on");
                 _txtStatusBadge.Foreground = WpfTheme.AccentGreen;
 
-                _btnPower.Background = new LinearGradientBrush(
-                    Color.FromRgb(16, 185, 129),
-                    Color.FromRgb(5, 150, 105),
-                    90.0);
-                _btnPower.BorderBrush = new SolidColorBrush(Color.FromRgb(110, 231, 183));
+                _btnPower.Background = WpfTheme.PowerOnBg;
+                _btnPower.BorderBrush = WpfTheme.PowerOnBorder;
 
                 _txtStatusHint.Text = string.Format("127.0.0.1:{0}  \u2022  {1}  \u2022  {2}",
                     _proxy.ListenPort, p.Host, _cmbSniMode.SelectedItem ?? string.Empty);
@@ -1521,11 +1534,8 @@ namespace NologGuard
                 _txtStatusBadge.Text = T("status_off");
                 _txtStatusBadge.Foreground = WpfTheme.TextSecondary;
 
-                _btnPower.Background = new LinearGradientBrush(
-                    Color.FromRgb(37, 99, 235),
-                    Color.FromRgb(29, 78, 216),
-                    90.0);
-                _btnPower.BorderBrush = new SolidColorBrush(Color.FromRgb(96, 165, 250));
+                _btnPower.Background = WpfTheme.PowerOffBg;
+                _btnPower.BorderBrush = WpfTheme.PowerOffBorder;
 
                 _txtStatusHint.Text = T("status_hint_off");
 
@@ -1621,14 +1631,7 @@ namespace NologGuard
             }
 
             SyncDashboardToConfig();
-            if (_isProtected)
-            {
-                if (chk != null && chk.IsChecked != true)
-                {
-                    WindowsNetworkHelper.RestoreAll();
-                }
-                _host.ApplyConfigChanges(true);
-            }
+            _host.ApplyConfigChanges(true);
         }
 
         private async void HandleTestDohClick(object sender, RoutedEventArgs e)
@@ -1645,11 +1648,14 @@ namespace NologGuard
                 _resolver.SetProvider(provider);
 
                 Tuple<bool, int, string> res = await _resolver.ProbeLatencyAsync(CancellationToken.None);
+                if (_isClosed) return;
+
                 bool abStatic = _proxy.IsAdBlockHostBlocked("doubleclick.net");
                 bool loopbackOk = false;
                 if (_isProtected && _config.EnableAdBlock)
                 {
                     loopbackOk = await _proxy.VerifyLoopbackAdBlockAsync(CancellationToken.None);
+                    if (_isClosed) return;
                 }
 
                 string abVerdict;
@@ -1683,7 +1689,7 @@ namespace NologGuard
             }
             finally
             {
-                _btnTestDoh.IsEnabled = true;
+                if (!_isClosed) _btnTestDoh.IsEnabled = true;
             }
         }
 
@@ -1696,6 +1702,7 @@ namespace NologGuard
             try
             {
                 UpdateCheckResult res = await UpdateChecker.CheckLatestAsync(AppConfig.GitHubRepo, AppConfig.AppVersion, CancellationToken.None);
+                if (_isClosed) return;
                 if (res.Success)
                 {
                     string ver = (res.LatestVersion ?? string.Empty).Trim();
@@ -1724,7 +1731,7 @@ namespace NologGuard
             }
             finally
             {
-                _btnCheckUpdate.IsEnabled = true;
+                if (!_isClosed) _btnCheckUpdate.IsEnabled = true;
             }
         }
 
@@ -1739,6 +1746,7 @@ namespace NologGuard
 
             bool isStarter = string.Equals(preset.Id, "starter", StringComparison.OrdinalIgnoreCase);
             bool isCustom = string.Equals(preset.Id, "custom", StringComparison.OrdinalIgnoreCase);
+            bool hasCache = isStarter || DomainBlocklist.HasCachedPreset(preset.Id);
 
             if (_abCustomUrlPanel != null)
             {
@@ -1750,15 +1758,20 @@ namespace NologGuard
             _btnAbUpdate.Background = isStarter ? WpfTheme.BgCardAlt : WpfTheme.AccentBlue;
 
             string counts = string.Format(T("ab_rules_count"), _proxy.ActiveBlockRuleCount, _proxy.ActiveAllowRuleCount);
-            if (_config.EnableAdBlock)
-            {
-                _txtAbStatus.Foreground = WpfTheme.AccentGreen;
-                _txtAbStatus.Text = "\u25CF  " + counts;
-            }
-            else
+            if (!_config.EnableAdBlock)
             {
                 _txtAbStatus.Foreground = WpfTheme.AccentAmber;
                 _txtAbStatus.Text = "\u23F8  " + T("ab_paused") + " \u2022 " + counts;
+            }
+            else if (!hasCache)
+            {
+                _txtAbStatus.Foreground = WpfTheme.AccentAmber;
+                _txtAbStatus.Text = "\u26A0  " + counts + "  \u2192  " + T("ab_update");
+            }
+            else
+            {
+                _txtAbStatus.Foreground = WpfTheme.AccentGreen;
+                _txtAbStatus.Text = "\u25CF  " + counts;
             }
         }
 
@@ -1808,8 +1821,9 @@ namespace NologGuard
 
             try
             {
-                Tuple<bool, int, string> res = await DomainBlocklist.DownloadPresetToCacheAsync(effectiveUrl, CancellationToken.None);
-                _proxy.UpdateSettings(_config);
+                Tuple<bool, int, string> res = await DomainBlocklist.DownloadPresetToCacheAsync(preset.Id, effectiveUrl, CancellationToken.None);
+                _host.ApplyConfigChanges(false);
+                if (_isClosed) return;
 
                 if (res.Item1)
                 {
@@ -1823,12 +1837,15 @@ namespace NologGuard
             }
             finally
             {
-                _cmbAbPreset.IsEnabled = true;
-                int curIdx = _cmbAbPreset.SelectedIndex;
-                BlocklistPreset cur = (curIdx >= 0 && curIdx < BlocklistPreset.Presets.Length)
-                    ? BlocklistPreset.Presets[curIdx]
-                    : BlocklistPreset.Presets[0];
-                _btnAbUpdate.IsEnabled = !string.Equals(cur.Id, "starter", StringComparison.OrdinalIgnoreCase);
+                if (!_isClosed)
+                {
+                    _cmbAbPreset.IsEnabled = true;
+                    int curIdx = _cmbAbPreset.SelectedIndex;
+                    BlocklistPreset cur = (curIdx >= 0 && curIdx < BlocklistPreset.Presets.Length)
+                        ? BlocklistPreset.Presets[curIdx]
+                        : BlocklistPreset.Presets[0];
+                    _btnAbUpdate.IsEnabled = !string.Equals(cur.Id, "starter", StringComparison.OrdinalIgnoreCase);
+                }
             }
         }
 
@@ -1879,13 +1896,7 @@ namespace NologGuard
             string[] lines = _tbWhitelist.Text.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
             _config.Whitelist = new List<string>(lines);
             _config.Save();
-            _proxy.UpdateSettings(_config);
-
-            if (_isProtected && _config.ApplySystemProxy)
-            {
-                string warn;
-                WindowsNetworkHelper.ApplyProtection(_config, _proxy.ListenPort, out warn);
-            }
+            _host.ApplyConfigChanges(_config.ApplySystemProxy);
 
             _txtWlSaved.Text = T("wl_saved");
         }
@@ -1911,8 +1922,7 @@ namespace NologGuard
             _tbDelay.Text = _config.ChunkDelayMs.ToString();
 
             WindowsNetworkHelper.SetStartWithWindows(_config.StartWithWindows);
-            _resolver.SetProvider(DohProvider.FindById(_config.DohProviderId, _config.CustomDohUrl));
-            _proxy.UpdateSettings(_config);
+            _host.ApplyConfigChanges(true);
             _txtSettingsStatus.Text = T("set_saved");
         }
 
@@ -1977,6 +1987,7 @@ namespace NologGuard
 
         protected override void OnClosed(EventArgs e)
         {
+            _isClosed = true;
             _host.StateChanged -= HandleHostStateChanged;
             _host.LogAdded -= HandleHostLogAdded;
 

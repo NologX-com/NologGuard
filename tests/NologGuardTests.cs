@@ -26,14 +26,18 @@ namespace NologGuardTests
             RunTest("TlsClientHelloParser_StandardAndPostQuantumLarge", TestTlsClientHelloParser);
             RunTest("TlsClientHelloParser_SplitSlicesContiguous", TestSplitSlicesContiguous);
             RunTest("AppConfig_SaveLoadNormalize", TestAppConfigRoundTrip);
+            RunTest("DohProvider_CustomPortAndIpBootstrap", TestDohProviderCustomPortAndIp);
             RunTest("ProxyServer_LoopbackSniSplitAndBypass", TestProxyLoopbackSplitAndBypass);
             RunTest("ProxyServer_FragmentedLargeClientHelloBuffering", TestProxyFragmentedLargeClientHello);
             RunTest("ProxyServer_FixedChunksAndPlainHttp", TestProxyFixedChunksAndPlainHttp);
             RunTest("DomainBlocklist_FormatsAndExceptions", TestDomainBlocklistFormats);
             RunTest("DomainBlocklist_CompactHashDedupeAndSeal", TestDomainBlocklistCompactHashDedupe);
+            RunTest("DomainBlocklist_PerPresetCacheIsolation", TestDomainBlocklistPerPresetIsolation);
             RunTest("BlocklistPreset_HostsVnAndCustomUrl", TestBlocklistPresetHostsVnAndCustom);
             RunTest("ProxyServer_AdBlockAndWhitelistPrecedence", TestProxyAdBlockAndPrecedence);
             RunTest("ProxyServer_VerifyLoopbackAdBlock", TestProxyVerifyLoopbackAdBlock);
+            RunTest("ProxyServer_StopAbortsActiveKeepAliveTunnels", TestProxyStopAbortsActiveTunnels);
+            RunTest("TlsClientHelloParser_CoalescedRecordHandshakeBound", TestTlsCoalescedRecordBound);
             RunTest("SingleInstanceLock_RelaunchWaitsAndAcquires", TestSingleInstanceLockRelaunch);
             RunTest("UpdateChecker_VersionAndJsonParsing", TestUpdateCheckerParsing);
             RunTest("Strings_All32LanguagesComplete", TestAllLanguagesComplete);
@@ -652,6 +656,122 @@ namespace NologGuardTests
                 proxy.SetCustomBlocklist(empty, false);
                 Assert(!proxy.IsAdBlockHostBlocked("doubleclick.net"), "Disabled AdBlock must return false");
             }
+        }
+
+        private static void TestDohProviderCustomPortAndIp()
+        {
+            DohProvider customPort = DohProvider.FindById("custom", "https://dns.internal.test:8443/dns-query");
+            Assert(customPort.Port == 8443, "Expected custom DoH port 8443, got " + customPort.Port);
+            Assert(customPort.Url == "https://dns.internal.test:8443/dns-query", "Expected port in URL, got " + customPort.Url);
+            Assert(customPort.BootstrapIps.Length == 0, "Hostname DoH must not invent BootstrapIps");
+
+            DohProvider customIp = DohProvider.FindById("custom", "https://1.1.1.2/dns-query");
+            Assert(customIp.Port == 443, "Expected default port 443");
+            Assert(customIp.BootstrapIps.Length == 1 && customIp.BootstrapIps[0] == "1.1.1.2", "IP DoH should auto-populate BootstrapIps");
+            Assert(customIp.SystemDnsIpv4.Length == 1 && customIp.SystemDnsIpv4[0] == "1.1.1.2", "IPv4 port-443 DoH should populate SystemDnsIpv4");
+        }
+
+        private static void TestDomainBlocklistPerPresetIsolation()
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "NologGuard_CacheTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Verify legacy blocklist_cache.txt migrates once to the active preset without contaminating other presets
+                string legacyPath = Path.Combine(tempDir, "blocklist_cache.txt");
+                File.WriteAllText(legacyPath, "||legacy-pro-only.test^\n", Encoding.UTF8);
+
+                DomainBlocklist pro = DomainBlocklist.Build("hagezi-pro", null, tempDir);
+                Assert(pro.IsBlocked("legacy-pro-only.test"), "Legacy cache should migrate to active preset");
+                Assert(!File.Exists(legacyPath), "Legacy cache file should be renamed to per-preset file");
+
+                DomainBlocklist vn = DomainBlocklist.Build("hostsvn", null, tempDir);
+                Assert(!vn.IsBlocked("legacy-pro-only.test"), "Other preset without cache must NOT load hagezi-pro rules");
+                Assert(vn.IsBlocked("doubleclick.net"), "Other preset without cache must still include StarterDomains");
+
+                File.WriteAllText(DomainBlocklist.GetCacheFilePath("hostsvn", tempDir), "0.0.0.0 vn-ad-only.test\n", Encoding.UTF8);
+                DomainBlocklist vnLoaded = DomainBlocklist.Build("hostsvn", null, tempDir);
+                Assert(vnLoaded.IsBlocked("vn-ad-only.test"), "hostsVN cache should load its own domain");
+                Assert(!vnLoaded.IsBlocked("legacy-pro-only.test"), "hostsVN must stay isolated from hagezi-pro cache");
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+
+        private static void TestProxyStopAbortsActiveTunnels()
+        {
+            AppConfig cfg = AppConfig.CreateDefault();
+            cfg.SplitMode = SniSplitMode.SmartSni;
+            cfg.Whitelist = new List<string>();
+
+            TcpListener upstream = new TcpListener(IPAddress.Loopback, 0);
+            upstream.Start();
+            int upstreamPort = ((IPEndPoint)upstream.LocalEndpoint).Port;
+
+            TcpClient acceptedUpstream = null;
+            Task acceptTask = Task.Run(delegate()
+            {
+                try { acceptedUpstream = upstream.AcceptTcpClient(); } catch { }
+            });
+
+            try
+            {
+                ProxyServer proxy = new ProxyServer(new StubLoopbackResolver(), cfg);
+                proxy.Start(0);
+
+                using (TcpClient client = new TcpClient())
+                {
+                    client.Connect(IPAddress.Loopback, proxy.ListenPort);
+                    NetworkStream ns = client.GetStream();
+                    byte[] req = Encoding.ASCII.GetBytes("CONNECT keepalive.example.test:" + upstreamPort + " HTTP/1.1\r\nHost: keepalive.example.test:" + upstreamPort + "\r\n\r\n");
+                    ns.Write(req, 0, req.Length);
+
+                    byte[] resp = new byte[128];
+                    int rn = ns.Read(resp, 0, resp.Length);
+                    Assert(Encoding.ASCII.GetString(resp, 0, rn).StartsWith("HTTP/1.1 200"), "Expected 200 tunnel established");
+
+                    byte[] ch = BuildSyntheticClientHello("keepalive.example.test", 0);
+                    ns.Write(ch, 0, ch.Length);
+                    ns.Flush();
+
+                    acceptTask.Wait(2000);
+                    Thread.Sleep(50);
+                    Assert(proxy.ActiveConnections == 1, "Expected 1 active keep-alive tunnel before Stop(), got " + proxy.ActiveConnections);
+
+                    System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
+                    proxy.Stop();
+                    sw.Stop();
+
+                    Assert(proxy.ActiveConnections == 0, "Stop() must immediately abort active keep-alive tunnels, got " + proxy.ActiveConnections);
+                    Assert(sw.ElapsedMilliseconds < 1000, "Stop() should finish promptly, took " + sw.ElapsedMilliseconds + " ms");
+                }
+                proxy.Dispose();
+            }
+            finally
+            {
+                if (acceptedUpstream != null) { try { acceptedUpstream.Close(); } catch { } }
+                upstream.Stop();
+            }
+        }
+
+        private static void TestTlsCoalescedRecordBound()
+        {
+            byte[] chNoSni = new byte[] {
+                0x16, 0x03, 0x03, 0x00, 0x35, // Record length = 53 bytes (45B ClientHello + 8B trailing data)
+                0x01, 0x00, 0x00, 0x29,       // Handshake ClientHello length = 41 bytes (ends at offset 50)
+                0x03, 0x03,                   // TLS 1.2
+                // 32 random bytes (offsets 11..42):
+                0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,
+                0x00,                         // SessionID len = 0 (offset 43)
+                0x00, 0x02, 0x13, 0x01,       // CipherSuites len = 2 (offsets 44..47)
+                0x01, 0x00,                   // Compression len = 1 (offsets 48..49) -> no extensions in ClientHello!
+                // Trailing coalesced bytes inside record (offsets 50..57) mimicking fake extension bytes:
+                0x00, 0x06, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00
+            };
+            SniParseInfo info = TlsClientHelloParser.Parse(chNoSni, chNoSni.Length);
+            Assert(info.IsTlsHandshake && !info.SniFound, "Parser must stop at ClientHello handshake boundary");
         }
 
         private static void TestSingleInstanceLockRelaunch()
