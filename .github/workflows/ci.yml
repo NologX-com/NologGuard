@@ -1,0 +1,161 @@
+name: Build, Test, Sign & Release NologGuard
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build & Test (Unsigned + Installer)
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      app_artifact_id: ${{ steps.upload_app.outputs.artifact-id }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve version string
+        id: meta
+        shell: powershell
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $ver = $tag.TrimStart('v').Split('-')[0]
+          } else {
+            $ver = "1.2.0"
+          }
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Resolved AppVersion=$ver"
+
+      - name: Build and run automated tests (csc.exe)
+        shell: cmd
+        run: build.bat
+
+      - name: Build Release binary via MSBuild
+        shell: cmd
+        run: >
+          %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe
+          NologGuard.csproj
+          /p:Configuration=Release
+          /p:Platform=x64
+          /nologo
+          /verbosity:minimal
+
+      - name: Build Inno Setup installer (NologGuard-Setup.exe)
+        shell: powershell
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            winget install --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup 6 ISCC.exe not found at $iscc"
+          }
+          & $iscc "/DAppVersion=${{ steps.meta.outputs.version }}" '/DAppExePath=..\bin\Release\NologGuard.exe' "installer\NologGuard.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Generate SHA256 checksums
+        shell: powershell
+        run: |
+          $h1 = (Get-FileHash -Path "bin\Release\NologGuard.exe" -Algorithm SHA256).Hash
+          "$h1  NologGuard.exe" | Out-File -FilePath "bin\Release\NologGuard.exe.sha256" -Encoding ascii
+          $h2 = (Get-FileHash -Path "dist\NologGuard-Setup.exe" -Algorithm SHA256).Hash
+          "$h2  NologGuard-Setup.exe" | Out-File -FilePath "dist\NologGuard-Setup.exe.sha256" -Encoding ascii
+
+      - name: Upload unsigned executable for optional SignPath signing
+        id: upload_app
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-app
+          path: bin\Release\NologGuard.exe
+
+      - name: Upload build bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: NologGuard-win-x64-unsigned
+          path: |
+            bin\Release\NologGuard.exe
+            bin\Release\NologGuard.exe.sha256
+            dist\NologGuard-Setup.exe
+            dist\NologGuard-Setup.exe.sha256
+
+      - name: Attach unsigned Release assets (when SignPath is not enabled)
+        if: startsWith(github.ref, 'refs/tags/v') && vars.ENABLE_SIGNPATH != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bin\Release\NologGuard.exe
+            bin\Release\NologGuard.exe.sha256
+            dist\NologGuard-Setup.exe
+            dist\NologGuard-Setup.exe.sha256
+
+  sign-and-release:
+    name: Code Sign via SignPath & Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && vars.ENABLE_SIGNPATH == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sign NologGuard.exe with SignPath Foundation
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ secrets.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG || ''nologguard'' }}'
+          signing-policy-slug: '${{ vars.SIGNPATH_POLICY_SLUG || ''release-signing'' }}'
+          github-artifact-id: '${{ needs.build.outputs.app_artifact_id }}'
+          wait-for-completion: true
+          output-artifact-directory: './signed-app'
+
+      - name: Package signed NologGuard.exe into Inno Setup installer
+        shell: powershell
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            winget install --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
+          }
+          & $iscc "/DAppVersion=${{ needs.build.outputs.version }}" '/DAppExePath=..\signed-app\NologGuard.exe' "installer\NologGuard.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload unsigned installer wrapping signed executable
+        id: upload_setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: dist\NologGuard-Setup.exe
+
+      - name: Sign NologGuard-Setup.exe with SignPath Foundation
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '${{ secrets.SIGNPATH_ORGANIZATION_ID }}'
+          project-slug: '${{ vars.SIGNPATH_PROJECT_SLUG || ''nologguard'' }}'
+          signing-policy-slug: '${{ vars.SIGNPATH_POLICY_SLUG || ''release-signing'' }}'
+          github-artifact-id: '${{ steps.upload_setup.outputs.artifact-id }}'
+          wait-for-completion: true
+          output-artifact-directory: './signed-installer'
+
+      - name: Generate SHA256 checksums for signed assets
+        shell: powershell
+        run: |
+          $h1 = (Get-FileHash -Path "signed-app\NologGuard.exe" -Algorithm SHA256).Hash
+          "$h1  NologGuard.exe" | Out-File -FilePath "signed-app\NologGuard.exe.sha256" -Encoding ascii
+          $h2 = (Get-FileHash -Path "signed-installer\NologGuard-Setup.exe" -Algorithm SHA256).Hash
+          "$h2  NologGuard-Setup.exe" | Out-File -FilePath "signed-installer\NologGuard-Setup.exe.sha256" -Encoding ascii
+
+      - name: Attach signed Release assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            signed-app\NologGuard.exe
+            signed-app\NologGuard.exe.sha256
+            signed-installer\NologGuard-Setup.exe
+            signed-installer\NologGuard-Setup.exe.sha256
