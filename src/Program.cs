@@ -47,14 +47,14 @@ namespace NologGuard
                 }
             }
 
-            MainWindow.WmShowMe = RegisterWindowMessage("WM_NOLOGGUARD_SHOWME");
-            MainWindow.WmExitApp = RegisterWindowMessage("WM_NOLOGGUARD_EXIT");
+            TrayHost.WmShowMe = RegisterWindowMessage("WM_NOLOGGUARD_SHOWME");
+            TrayHost.WmExitApp = RegisterWindowMessage("WM_NOLOGGUARD_EXIT");
 
             if (exitRunning)
             {
-                if (MainWindow.WmExitApp != 0)
+                if (TrayHost.WmExitApp != 0)
                 {
-                    PostMessage((IntPtr)HwndBroadcast, MainWindow.WmExitApp, IntPtr.Zero, IntPtr.Zero);
+                    PostMessage((IntPtr)HwndBroadcast, TrayHost.WmExitApp, IntPtr.Zero, IntPtr.Zero);
                     using (SingleInstanceLock waitExit = SingleInstanceLock.TryAcquire(
                         SingleInstanceLock.AppMutexName,
                         true,
@@ -79,9 +79,9 @@ namespace NologGuard
             {
                 if (instanceLock == null)
                 {
-                    if (MainWindow.WmShowMe != 0)
+                    if (TrayHost.WmShowMe != 0)
                     {
-                        PostMessage((IntPtr)HwndBroadcast, MainWindow.WmShowMe, IntPtr.Zero, IntPtr.Zero);
+                        PostMessage((IntPtr)HwndBroadcast, TrayHost.WmShowMe, IntPtr.Zero, IntPtr.Zero);
                     }
                     return;
                 }
@@ -100,15 +100,17 @@ namespace NologGuard
 
                 AppConfig config = AppConfig.Load();
                 Application app = new Application();
-                app.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
                 app.DispatcherUnhandledException += delegate(object s, DispatcherUnhandledExceptionEventArgs e)
                 {
                     WindowsNetworkHelper.RestoreAll();
                 };
 
-                MainWindow window = new MainWindow(config, startMinimized, enableShieldOnStart);
-                app.MainWindow = window;
-                app.Run(window);
+                using (TrayHost host = new TrayHost(config, enableShieldOnStart))
+                {
+                    host.Start(startMinimized);
+                    app.Run();
+                }
             }
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +15,19 @@ namespace NologGuard
     /// </summary>
     public sealed class ProxyServer : IDisposable
     {
+        private static readonly byte[] OkConnectResponseBytes =
+            Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n");
+
+        private static readonly ConcurrentBag<byte[]> SmallRelayPool = new ConcurrentBag<byte[]>();
+        private static int _smallRelayPoolCount;
+        private const int SmallRelayBufSize = 8192;
+        private const int MaxSmallRelayPool = 32;
+
+        private static readonly ConcurrentBag<byte[]> LargeScratchPool = new ConcurrentBag<byte[]>();
+        private static int _largeScratchPoolCount;
+        private const int LargeScratchBufSize = 32768;
+        private const int MaxLargeScratchPool = 16;
+
         private readonly IDnsResolver _resolver;
         private readonly object _configLock = new object();
 
@@ -299,101 +313,118 @@ namespace NologGuard
 
                 if (string.Equals(method, "CONNECT", StringComparison.OrdinalIgnoreCase))
                 {
-                    byte[] okResp = Encoding.ASCII.GetBytes("HTTP/1.1 200 Connection Established\r\n\r\n");
-                    await clientStream.WriteAsync(okResp, 0, okResp.Length, ct).ConfigureAwait(false);
+                    await clientStream.WriteAsync(OkConnectResponseBytes, 0, OkConnectResponseBytes.Length, ct).ConfigureAwait(false);
                     await clientStream.FlushAsync(ct).ConfigureAwait(false);
 
-                    byte[] initialBuf = new byte[32768];
-                    int totalRead = 0;
+                    byte[] trailing = header.TrailingBytes;
+                    header = null;
 
-                    if (header.TrailingLength > 0)
+                    byte[] initialBuf = RentBuffer(LargeScratchPool, ref _largeScratchPoolCount, LargeScratchBufSize);
+                    try
                     {
-                        int copyLen = Math.Min(header.TrailingLength, initialBuf.Length);
-                        Buffer.BlockCopy(header.RawBuffer, header.HeaderEndIndex, initialBuf, 0, copyLen);
-                        totalRead = copyLen;
-                    }
-                    else
-                    {
-                        totalRead = await ReadWithTimeoutAsync(clientStream, initialBuf, 0, initialBuf.Length, 5000, ct).ConfigureAwait(false);
-                    }
+                        int totalRead = 0;
 
-                    if (totalRead <= 0)
-                    {
-                        return;
-                    }
-
-                    if (TlsClientHelloParser.IsTlsClientHelloPrefix(initialBuf, totalRead))
-                    {
-                        int expectedLen = TlsClientHelloParser.GetExpectedTlsRecordLength(initialBuf, totalRead);
-                        int cap = Math.Min(initialBuf.Length, expectedLen);
-                        while (totalRead < cap)
+                        if (trailing != null && trailing.Length > 0)
                         {
-                            int more = await ReadWithTimeoutAsync(clientStream, initialBuf, totalRead, cap - totalRead, 1000, ct).ConfigureAwait(false);
-                            if (more <= 0) break;
-                            totalRead += more;
-                        }
-                    }
-
-                    SniParseInfo sni = TlsClientHelloParser.Parse(initialBuf, totalRead);
-                    string effectiveHost = (sni.SniFound && !string.IsNullOrEmpty(sni.Hostname)) ? sni.Hostname : targetHost;
-                    bool excluded = matcher.IsExcluded(effectiveHost) || matcher.IsExcluded(targetHost);
-
-                    if (enableAdBlock && blocklist != null && !excluded && blocklist.IsBlocked(effectiveHost))
-                    {
-                        Interlocked.Increment(ref _blockedConnections);
-                        Log(logDomains ? "[BLOCKED-SNI] " + effectiveHost : "[BLOCKED-SNI] ad/tracker");
-                        return;
-                    }
-
-                    if (excluded || splitMode == SniSplitMode.Off || !sni.IsTlsHandshake)
-                    {
-                        await upstreamStream.WriteAsync(initialBuf, 0, totalRead, ct).ConfigureAwait(false);
-                        await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
-
-                        if (excluded)
-                        {
-                            Interlocked.Increment(ref _excludedConnections);
-                            Log(logDomains ? "[BYPASS] " + effectiveHost : "[BYPASS] direct");
+                            int copyLen = Math.Min(trailing.Length, initialBuf.Length);
+                            Buffer.BlockCopy(trailing, 0, initialBuf, 0, copyLen);
+                            totalRead = copyLen;
+                            trailing = null;
                         }
                         else
                         {
-                            Log(logDomains ? "[DIRECT] " + effectiveHost : "[DIRECT] passthrough");
+                            totalRead = await ReadWithTimeoutAsync(clientStream, initialBuf, 0, initialBuf.Length, 5000, ct).ConfigureAwait(false);
                         }
-                    }
-                    else
-                    {
-                        List<ByteSlice> slices = TlsClientHelloParser.BuildSplitSlices(totalRead, splitMode, chunkSize, sni);
-                        for (int i = 0; i < slices.Count; i++)
-                        {
-                            ByteSlice slice = slices[i];
-                            await upstreamStream.WriteAsync(initialBuf, slice.Offset, slice.Count, ct).ConfigureAwait(false);
-                            await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
 
-                            if (chunkDelayMs > 0 && i + 1 < slices.Count)
+                        if (totalRead <= 0)
+                        {
+                            return;
+                        }
+
+                        if (TlsClientHelloParser.IsTlsClientHelloPrefix(initialBuf, totalRead))
+                        {
+                            int expectedLen = TlsClientHelloParser.GetExpectedTlsRecordLength(initialBuf, totalRead);
+                            int cap = Math.Min(initialBuf.Length, expectedLen);
+                            while (totalRead < cap)
                             {
-                                await Task.Delay(chunkDelayMs, ct).ConfigureAwait(false);
+                                int more = await ReadWithTimeoutAsync(clientStream, initialBuf, totalRead, cap - totalRead, 1000, ct).ConfigureAwait(false);
+                                if (more <= 0) break;
+                                totalRead += more;
                             }
                         }
 
-                        Interlocked.Increment(ref _protectedConnections);
-                        Log(logDomains
-                            ? string.Format("[SNI-SPLIT x{0}] {1} ({2}B)", slices.Count, effectiveHost, totalRead)
-                            : string.Format("[SNI-SPLIT x{0}] ({1}B)", slices.Count, totalRead));
+                        SniParseInfo sni = TlsClientHelloParser.Parse(initialBuf, totalRead);
+                        string effectiveHost = (sni.SniFound && !string.IsNullOrEmpty(sni.Hostname)) ? sni.Hostname : targetHost;
+                        bool excluded = matcher.IsExcluded(effectiveHost) || matcher.IsExcluded(targetHost);
+
+                        if (enableAdBlock && blocklist != null && !excluded && blocklist.IsBlocked(effectiveHost))
+                        {
+                            Interlocked.Increment(ref _blockedConnections);
+                            Log(logDomains ? "[BLOCKED-SNI] " + effectiveHost : "[BLOCKED-SNI] ad/tracker");
+                            return;
+                        }
+
+                        if (excluded || splitMode == SniSplitMode.Off || !sni.IsTlsHandshake)
+                        {
+                            await upstreamStream.WriteAsync(initialBuf, 0, totalRead, ct).ConfigureAwait(false);
+                            await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
+
+                            if (excluded)
+                            {
+                                Interlocked.Increment(ref _excludedConnections);
+                                Log(logDomains ? "[BYPASS] " + effectiveHost : "[BYPASS] direct");
+                            }
+                            else
+                            {
+                                Log(logDomains ? "[DIRECT] " + effectiveHost : "[DIRECT] passthrough");
+                            }
+                        }
+                        else
+                        {
+                            List<ByteSlice> slices = TlsClientHelloParser.BuildSplitSlices(totalRead, splitMode, chunkSize, sni);
+                            for (int i = 0; i < slices.Count; i++)
+                            {
+                                ByteSlice slice = slices[i];
+                                await upstreamStream.WriteAsync(initialBuf, slice.Offset, slice.Count, ct).ConfigureAwait(false);
+                                await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
+
+                                if (chunkDelayMs > 0 && i + 1 < slices.Count)
+                                {
+                                    await Task.Delay(chunkDelayMs, ct).ConfigureAwait(false);
+                                }
+                            }
+
+                            Interlocked.Increment(ref _protectedConnections);
+                            Log(logDomains
+                                ? string.Format("[SNI-SPLIT x{0}] {1} ({2}B)", slices.Count, effectiveHost, totalRead)
+                                : string.Format("[SNI-SPLIT x{0}] ({1}B)", slices.Count, totalRead));
+                        }
+                    }
+                    finally
+                    {
+                        ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, initialBuf);
+                        initialBuf = null;
                     }
                 }
                 else
                 {
                     byte[] reqHeaderBytes = Encoding.ASCII.GetBytes(forwardRequestBytesHeader);
+                    forwardRequestBytesHeader = null;
                     await upstreamStream.WriteAsync(reqHeaderBytes, 0, reqHeaderBytes.Length, ct).ConfigureAwait(false);
-                    if (header.TrailingLength > 0)
+                    if (header.TrailingBytes != null && header.TrailingBytes.Length > 0)
                     {
-                        await upstreamStream.WriteAsync(header.RawBuffer, header.HeaderEndIndex, header.TrailingLength, ct).ConfigureAwait(false);
+                        await upstreamStream.WriteAsync(header.TrailingBytes, 0, header.TrailingBytes.Length, ct).ConfigureAwait(false);
                     }
                     await upstreamStream.FlushAsync(ct).ConfigureAwait(false);
+                    header = null;
 
                     Interlocked.Increment(ref _excludedConnections);
                     Log(logDomains ? "[HTTP] " + targetHost : "[HTTP] passthrough");
                 }
+
+                matcher = null;
+                blocklist = null;
+                ips = null;
 
                 Task c2u = RelayStreamAsync(clientStream, client.Client, upstreamStream, upstream.Client, ct);
                 Task u2c = RelayStreamAsync(upstreamStream, upstream.Client, clientStream, client.Client, ct);
@@ -443,6 +474,30 @@ namespace NologGuard
             return null;
         }
 
+        private static byte[] RentBuffer(ConcurrentBag<byte[]> pool, ref int count, int size)
+        {
+            byte[] buf;
+            if (pool.TryTake(out buf))
+            {
+                Interlocked.Decrement(ref count);
+                return buf;
+            }
+            return new byte[size];
+        }
+
+        private static void ReturnBuffer(ConcurrentBag<byte[]> pool, ref int count, int maxPool, byte[] buf)
+        {
+            if (buf == null) return;
+            if (Interlocked.Increment(ref count) <= maxPool)
+            {
+                pool.Add(buf);
+            }
+            else
+            {
+                Interlocked.Decrement(ref count);
+            }
+        }
+
         private static async Task RelayStreamAsync(
             NetworkStream src,
             Socket srcSocket,
@@ -450,7 +505,7 @@ namespace NologGuard
             Socket dstSocket,
             CancellationToken ct)
         {
-            byte[] buf = new byte[32768];
+            byte[] buf = RentBuffer(SmallRelayPool, ref _smallRelayPoolCount, SmallRelayBufSize);
             try
             {
                 while (!ct.IsCancellationRequested)
@@ -468,6 +523,7 @@ namespace NologGuard
             }
             finally
             {
+                ReturnBuffer(SmallRelayPool, ref _smallRelayPoolCount, MaxSmallRelayPool, buf);
                 try { dstSocket.Shutdown(SocketShutdown.Send); } catch { }
             }
         }
@@ -496,46 +552,57 @@ namespace NologGuard
             public string Target;
             public string Version;
             public string[] HeaderLines;
-            public byte[] RawBuffer;
-            public int HeaderEndIndex;
-            public int TrailingLength;
+            public byte[] TrailingBytes;
         }
 
         private static async Task<HttpHeaderRead> ReadHttpRequestHeaderAsync(NetworkStream stream, CancellationToken ct)
         {
-            byte[] buf = new byte[32768];
-            int total = 0;
-            int headerEnd = -1;
-
-            while (total < buf.Length)
+            byte[] buf = RentBuffer(LargeScratchPool, ref _largeScratchPoolCount, LargeScratchBufSize);
+            try
             {
-                int read = await ReadWithTimeoutAsync(stream, buf, total, buf.Length - total, 10000, ct).ConfigureAwait(false);
-                if (read <= 0) return null;
-                total += read;
+                int total = 0;
+                int headerEnd = -1;
 
-                headerEnd = FindHeaderTerminator(buf, total);
-                if (headerEnd >= 0) break;
+                while (total < buf.Length)
+                {
+                    int read = await ReadWithTimeoutAsync(stream, buf, total, buf.Length - total, 10000, ct).ConfigureAwait(false);
+                    if (read <= 0) return null;
+                    total += read;
+
+                    headerEnd = FindHeaderTerminator(buf, total);
+                    if (headerEnd >= 0) break;
+                }
+
+                if (headerEnd < 0) return null;
+
+                string headerText = Encoding.ASCII.GetString(buf, 0, headerEnd - 4);
+                string[] lines = headerText.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+                if (lines.Length == 0) return null;
+
+                string[] parts = lines[0].Split(' ');
+                if (parts.Length < 3) return null;
+
+                int trailingLen = total - headerEnd;
+                byte[] trailingBytes = null;
+                if (trailingLen > 0)
+                {
+                    trailingBytes = new byte[trailingLen];
+                    Buffer.BlockCopy(buf, headerEnd, trailingBytes, 0, trailingLen);
+                }
+
+                return new HttpHeaderRead
+                {
+                    Method = parts[0].Trim(),
+                    Target = parts[1].Trim(),
+                    Version = parts[2].Trim(),
+                    HeaderLines = lines,
+                    TrailingBytes = trailingBytes
+                };
             }
-
-            if (headerEnd < 0) return null;
-
-            string headerText = Encoding.ASCII.GetString(buf, 0, headerEnd - 4);
-            string[] lines = headerText.Split(new string[] { "\r\n" }, StringSplitOptions.None);
-            if (lines.Length == 0) return null;
-
-            string[] parts = lines[0].Split(' ');
-            if (parts.Length < 3) return null;
-
-            return new HttpHeaderRead
+            finally
             {
-                Method = parts[0].Trim(),
-                Target = parts[1].Trim(),
-                Version = parts[2].Trim(),
-                HeaderLines = lines,
-                RawBuffer = buf,
-                HeaderEndIndex = headerEnd,
-                TrailingLength = total - headerEnd
-            };
+                ReturnBuffer(LargeScratchPool, ref _largeScratchPoolCount, MaxLargeScratchPool, buf);
+            }
         }
 
         private static int FindHeaderTerminator(byte[] buf, int length)

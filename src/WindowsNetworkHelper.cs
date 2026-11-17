@@ -99,11 +99,24 @@ namespace NologGuard
         /// </summary>
         public static void TrimMemory()
         {
+            TrimMemory(true);
+        }
+
+        public static void TrimMemory(bool fullGc)
+        {
             try
             {
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
+                if (fullGc)
+                {
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                }
+                else
+                {
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, false);
+                }
+
                 IntPtr self = GetCurrentProcess();
                 SetProcessWorkingSetSize(self, new IntPtr(-1), new IntPtr(-1));
                 EmptyWorkingSet(self);

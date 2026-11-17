@@ -126,8 +126,8 @@ namespace NologGuard
             "watson.telemetry.microsoft.com"
         };
 
-        private readonly HashSet<string> _blocked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly CompactDomainSet _blocked = new CompactDomainSet();
+        private readonly CompactDomainSet _allowed = new CompactDomainSet();
 
         public int BlockedRuleCount { get { return _blocked.Count; } }
         public int AllowedRuleCount { get { return _allowed.Count; } }
@@ -166,7 +166,14 @@ namespace NologGuard
                 bl.LoadLines(customRules);
             }
 
+            bl.Seal();
             return bl;
+        }
+
+        public void Seal()
+        {
+            _blocked.Seal();
+            _allowed.Seal();
         }
 
         public void LoadLines(IEnumerable<string> lines)
@@ -244,13 +251,14 @@ namespace NologGuard
             string domain = DomainMatcher.NormalizeHost(line);
             if (!IsValidBlockDomain(domain)) return;
 
+            ulong hash = HashDomainSlice(domain, 0, domain.Length);
             if (isAllow)
             {
-                _allowed.Add(domain);
+                _allowed.Add(hash);
             }
             else
             {
-                _blocked.Add(domain);
+                _blocked.Add(hash);
             }
         }
 
@@ -272,18 +280,122 @@ namespace NologGuard
             return MatchesDomainOrParent(_blocked, h);
         }
 
-        private static bool MatchesDomainOrParent(HashSet<string> set, string normalizedHost)
+        private static bool MatchesDomainOrParent(CompactDomainSet set, string normalizedHost)
         {
-            if (set.Contains(normalizedHost)) return true;
+            int len = normalizedHost.Length;
+            if (set.Contains(HashDomainSlice(normalizedHost, 0, len))) return true;
 
             int dot = normalizedHost.IndexOf('.');
-            while (dot >= 0 && dot + 1 < normalizedHost.Length)
+            while (dot >= 0 && dot + 1 < len)
             {
-                string parent = normalizedHost.Substring(dot + 1);
-                if (set.Contains(parent)) return true;
-                dot = normalizedHost.IndexOf('.', dot + 1);
+                int start = dot + 1;
+                if (set.Contains(HashDomainSlice(normalizedHost, start, len - start))) return true;
+                dot = normalizedHost.IndexOf('.', start);
             }
             return false;
+        }
+
+        /// <summary>
+        /// Computes an ASCII-lowercased FNV-1a 64-bit hash with SplitMix64 avalanche
+        /// directly from a string slice so runtime domain lookups allocate zero memory.
+        /// </summary>
+        private static ulong HashDomainSlice(string s, int offset, int length)
+        {
+            ulong h = 14695981039346656037UL;
+            int end = offset + length;
+            for (int i = offset; i < end; i++)
+            {
+                char c = s[i];
+                if (c >= 'A' && c <= 'Z') c = (char)(c + 32);
+                h ^= c;
+                h *= 1099511628211UL;
+            }
+            h ^= h >> 30;
+            h *= 0xbf58476d1ce4e5b9UL;
+            h ^= h >> 27;
+            h *= 0x94d049bb133111ebUL;
+            h ^= h >> 31;
+            return h;
+        }
+
+        /// <summary>
+        /// Memory-compact sorted unique 64-bit hash set (~8 bytes/domain, zero managed object references).
+        /// </summary>
+        private sealed class CompactDomainSet
+        {
+            private static readonly ulong[] Empty = new ulong[0];
+            private ulong[] _sorted = Empty;
+            private List<ulong> _pending;
+            private readonly object _syncLock = new object();
+
+            public int Count
+            {
+                get
+                {
+                    if (_pending != null) Seal();
+                    return _sorted.Length;
+                }
+            }
+
+            public void Add(ulong hash)
+            {
+                lock (_syncLock)
+                {
+                    if (_pending == null) _pending = new List<ulong>();
+                    _pending.Add(hash);
+                }
+            }
+
+            public void Seal()
+            {
+                lock (_syncLock)
+                {
+                    if (_pending == null || _pending.Count == 0)
+                    {
+                        _pending = null;
+                        return;
+                    }
+
+                    int prevLen = _sorted.Length;
+                    int pendingLen = _pending.Count;
+                    ulong[] merged = new ulong[prevLen + pendingLen];
+                    if (prevLen > 0)
+                    {
+                        Array.Copy(_sorted, 0, merged, 0, prevLen);
+                    }
+                    _pending.CopyTo(merged, prevLen);
+                    _pending = null;
+
+                    Array.Sort(merged);
+
+                    int unique = 0;
+                    for (int i = 0; i < merged.Length; i++)
+                    {
+                        if (unique == 0 || merged[i] != merged[unique - 1])
+                        {
+                            merged[unique++] = merged[i];
+                        }
+                    }
+
+                    if (unique == merged.Length)
+                    {
+                        _sorted = merged;
+                    }
+                    else
+                    {
+                        ulong[] exact = new ulong[unique];
+                        Array.Copy(merged, 0, exact, 0, unique);
+                        _sorted = exact;
+                    }
+                }
+            }
+
+            public bool Contains(ulong hash)
+            {
+                if (_pending != null) Seal();
+                ulong[] arr = _sorted;
+                return arr.Length > 0 && Array.BinarySearch(arr, hash) >= 0;
+            }
         }
 
         private static bool IsValidBlockDomain(string domain)

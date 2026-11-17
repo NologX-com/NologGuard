@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -11,48 +10,20 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using Forms = System.Windows.Forms;
 
 namespace NologGuard
 {
     public sealed class MainWindow : Window
     {
-        public static int WmShowMe = 0;
-        public static int WmExitApp = 0;
+        private const int MaxLogEntries = 200;
 
-        private const int WmQueryEndSession = 0x0011;
-        private const int WmEndSession = 0x0016;
-        private const int MaxLogEntries = 300;
-        private const int PauseModeNone = 0;
-        private const int PauseModeAdBlock = 1;
-        private const int PauseModeShield = 2;
-
+        private readonly TrayHost _host;
         private readonly AppConfig _config;
         private readonly DohResolver _resolver;
         private readonly ProxyServer _proxy;
-        private readonly bool _startMinimized;
 
-        private bool _isProtected;
         private bool _updatingUi;
-        private bool _forceClose;
-        private bool _trayHintShown;
-
-        private int _pauseMode = PauseModeNone;
-        private bool _pausedSavedAdBlock = true;
-        private DateTime _pauseUntilUtc = DateTime.MinValue;
-        private DispatcherTimer _pauseTimer;
-        private DispatcherTimer _trimTimer;
-
-        private System.Drawing.Icon _iconOff;
-        private System.Drawing.Icon _iconOn;
-        private Forms.NotifyIcon _trayIcon;
-        private Forms.ContextMenuStrip _trayMenu;
-        private Forms.ToolStripMenuItem _trayOpenItem;
-        private Forms.ToolStripMenuItem _trayToggleItem;
-        private Forms.ToolStripMenuItem _trayPauseAb5Item;
-        private Forms.ToolStripMenuItem _trayPauseShield15Item;
-        private Forms.ToolStripMenuItem _trayResumeItem;
-        private Forms.ToolStripMenuItem _trayExitItem;
+        private bool _isProtected { get { return _host.IsProtected; } }
 
         private DispatcherTimer _statsTimer;
         private readonly object _logLock = new object();
@@ -161,53 +132,41 @@ namespace NologGuard
         private Button _btnClearLog;
         private TextBox _tbLog;
 
-        public MainWindow(AppConfig config, bool startMinimized)
-            : this(config, startMinimized, false)
+        public MainWindow(TrayHost host)
         {
-        }
-
-        public MainWindow(AppConfig config, bool startMinimized, bool autoEnableShield)
-        {
-            _config = config ?? AppConfig.CreateDefault();
-            _startMinimized = startMinimized;
-            _resolver = new DohResolver(DohProvider.FindById(_config.DohProviderId, _config.CustomDohUrl));
-            _proxy = new ProxyServer(_resolver, _config);
-            _proxy.OnLog += HandleProxyLog;
-
-            _iconOff = WpfTheme.CreateShieldIcon(false);
-            _iconOn = WpfTheme.CreateShieldIcon(true);
+            _host = host;
+            _config = host.Config;
+            _resolver = host.Resolver;
+            _proxy = host.Proxy;
 
             InitializeWindow();
             BuildLayout();
-            InitializeTray();
             BindConfigToControls();
             ApplyLocalization();
             SwitchTab(0);
+
+            List<string> snapshot = _host.GetLogHistorySnapshot();
+            if (snapshot.Count > 0)
+            {
+                _logHistory.AddRange(snapshot);
+                _tbLog.Text = string.Join(Environment.NewLine, _logHistory.ToArray());
+                _tbLog.ScrollToEnd();
+            }
+
+            _host.StateChanged += HandleHostStateChanged;
+            _host.LogAdded += HandleHostLogAdded;
+
+            UpdateProtectionStatusUi();
+            if (!string.IsNullOrEmpty(_host.LastWarning))
+            {
+                ShowDashboardWarning(_host.LastWarning);
+            }
 
             _statsTimer = new DispatcherTimer();
             _statsTimer.Interval = TimeSpan.FromMilliseconds(500);
             _statsTimer.Tick += HandleStatsTick;
             _statsTimer.Start();
-
-            if (_startMinimized)
-            {
-                WindowState = WindowState.Minimized;
-                ShowInTaskbar = false;
-                _statsTimer.Stop();
-                Loaded += delegate(object s, RoutedEventArgs e)
-                {
-                    Hide();
-                    ToggleProtection(true);
-                    ScheduleTrayMemoryTrim();
-                };
-            }
-            else if (autoEnableShield || _config.AutoProtectOnLaunch)
-            {
-                Loaded += delegate(object s, RoutedEventArgs e)
-                {
-                    ToggleProtection(true);
-                };
-            }
+            HandleStatsTick(this, EventArgs.Empty);
         }
 
         private string T(string key)
@@ -230,58 +189,11 @@ namespace NologGuard
             UpdateWindowIcon(false);
         }
 
-        protected override void OnSourceInitialized(EventArgs e)
-        {
-            base.OnSourceInitialized(e);
-            WindowInteropHelper helper = new WindowInteropHelper(this);
-            HwndSource src = HwndSource.FromHwnd(helper.Handle);
-            if (src != null)
-            {
-                src.AddHook(WndProcHook);
-            }
-        }
-
-        private IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        {
-            if (WmShowMe != 0 && msg == WmShowMe)
-            {
-                RestoreFromTray();
-                handled = true;
-                return IntPtr.Zero;
-            }
-
-            if (WmExitApp != 0 && msg == WmExitApp)
-            {
-                _forceClose = true;
-                Close();
-                handled = true;
-                return IntPtr.Zero;
-            }
-
-            if (msg == WmQueryEndSession)
-            {
-                _forceClose = true;
-                handled = true;
-                return new IntPtr(1);
-            }
-
-            if (msg == WmEndSession && wParam != IntPtr.Zero)
-            {
-                _forceClose = true;
-                ShutdownSafely();
-                Close();
-                handled = true;
-                return IntPtr.Zero;
-            }
-
-            return IntPtr.Zero;
-        }
-
         private void UpdateWindowIcon(bool active)
         {
             try
             {
-                System.Drawing.Icon ico = active ? _iconOn : _iconOff;
+                System.Drawing.Icon ico = _host != null ? _host.GetIcon(active) : null;
                 if (ico != null)
                 {
                     Icon = Imaging.CreateBitmapSourceFromHIcon(
@@ -772,7 +684,7 @@ namespace NologGuard
                 HorizontalAlignment = HorizontalAlignment.Right,
                 Visibility = WindowsNetworkHelper.IsAdministrator() ? Visibility.Collapsed : Visibility.Visible
             };
-            _btnRunAdmin.Click += delegate(object s, RoutedEventArgs e) { PromptAndRestartAdmin(false); };
+            _btnRunAdmin.Click += delegate(object s, RoutedEventArgs e) { _host.RestartAsAdmin(this, false); };
 
             Grid.SetColumn(_btnWhyAdmin, 0);
             Grid.SetColumn(_btnRunAdmin, 1);
@@ -1298,6 +1210,7 @@ namespace NologGuard
             };
             _btnClearLog.Click += delegate(object s, RoutedEventArgs e)
             {
+                _host.ClearLogs();
                 _logHistory.Clear();
                 _tbLog.Clear();
             };
@@ -1322,45 +1235,6 @@ namespace NologGuard
             g.Children.Add(_tbLog);
 
             return g;
-        }
-
-        private void InitializeTray()
-        {
-            _trayMenu = new Forms.ContextMenuStrip();
-            _trayOpenItem = new Forms.ToolStripMenuItem();
-            _trayOpenItem.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(RestoreFromTray)); };
-
-            _trayToggleItem = new Forms.ToolStripMenuItem();
-            _trayToggleItem.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(delegate() { ToggleProtection(!_isProtected); })); };
-
-            _trayPauseAb5Item = new Forms.ToolStripMenuItem();
-            _trayPauseAb5Item.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(delegate() { PauseAdBlockTemporary(5); })); };
-
-            _trayPauseShield15Item = new Forms.ToolStripMenuItem();
-            _trayPauseShield15Item.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(delegate() { PauseShieldTemporary(15); })); };
-
-            _trayResumeItem = new Forms.ToolStripMenuItem();
-            _trayResumeItem.Visible = false;
-            _trayResumeItem.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(ResumeFromPause)); };
-
-            _trayExitItem = new Forms.ToolStripMenuItem();
-            _trayExitItem.Click += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(ExitCompletely)); };
-
-            _trayMenu.Items.Add(_trayOpenItem);
-            _trayMenu.Items.Add(_trayToggleItem);
-            _trayMenu.Items.Add(new Forms.ToolStripSeparator());
-            _trayMenu.Items.Add(_trayPauseAb5Item);
-            _trayMenu.Items.Add(_trayPauseShield15Item);
-            _trayMenu.Items.Add(_trayResumeItem);
-            _trayMenu.Items.Add(new Forms.ToolStripSeparator());
-            _trayMenu.Items.Add(_trayExitItem);
-
-            _trayIcon = new Forms.NotifyIcon();
-            _trayIcon.Icon = _iconOff;
-            _trayIcon.Text = "NologGuard - Off";
-            _trayIcon.ContextMenuStrip = _trayMenu;
-            _trayIcon.Visible = true;
-            _trayIcon.DoubleClick += delegate(object s, EventArgs e) { Dispatcher.BeginInvoke(new Action(RestoreFromTray)); };
         }
 
         private void BindConfigToControls()
@@ -1513,14 +1387,7 @@ namespace NologGuard
                 _txtLogNote.Text = T("log_note");
                 _btnClearLog.Content = T("btn_clear");
 
-                _trayOpenItem.Text = T("tray_open");
-                _trayToggleItem.Text = T("tray_toggle");
-                _trayPauseAb5Item.Text = T("tray_pause_ab5");
-                _trayPauseShield15Item.Text = T("tray_pause_shield15");
-                _trayResumeItem.Text = T("tray_resume");
-                _trayExitItem.Text = T("tray_exit");
-
-                UpdatePauseTrayUi();
+                _host.RefreshTrayLocalization();
                 UpdateProtectionStatusUi();
             }
             finally
@@ -1587,188 +1454,53 @@ namespace NologGuard
 
         private void ToggleProtection(bool enable)
         {
-            ToggleProtectionInternal(enable, true);
-        }
-
-        private void ToggleProtectionInternal(bool enable, bool clearPause)
-        {
-            if (clearPause) ClearPauseState();
-            if (enable == _isProtected) return;
-
             if (enable)
             {
-                try
-                {
-                    SyncDashboardToConfig();
-                    DohProvider provider = DohProvider.FindById(_config.DohProviderId, _config.CustomDohUrl);
-                    _resolver.SetProvider(provider);
-                    _proxy.UpdateSettings(_config);
-                    _proxy.Start(_config.ProxyPort);
-
-                    string warning;
-                    WindowsNetworkHelper.ApplyProtection(_config, _proxy.ListenPort, out warning);
-                    _isProtected = true;
-
-                    if (!string.IsNullOrEmpty(warning))
-                    {
-                        HandleProxyLog("[WARN] " + warning);
-                        ShowDashboardWarning(warning);
-                    }
-                    else
-                    {
-                        ClearDashboardWarning();
-                    }
-                    HandleProxyLog(string.Format("[ON] Proxy 127.0.0.1:{0} | DoH: {1}", _proxy.ListenPort, provider.DisplayName));
-                }
-                catch (Exception ex)
-                {
-                    _proxy.Stop();
-                    WindowsNetworkHelper.RestoreAll();
-                    _isProtected = false;
-                    MessageBox.Show(this, ex.Message, "NologGuard Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                SyncDashboardToConfig();
             }
-            else
-            {
-                _proxy.Stop();
-                WindowsNetworkHelper.RestoreAll();
-                _isProtected = false;
-                ClearDashboardWarning();
-                HandleProxyLog("[OFF] Shield disabled and network settings restored.");
-            }
-
-            UpdateProtectionStatusUi();
+            _host.ToggleProtection(enable);
         }
 
-        private void PauseAdBlockTemporary(int minutes)
+        private void HandleHostStateChanged()
         {
-            if (_pauseMode == PauseModeShield)
+            if (!Dispatcher.CheckAccess())
             {
-                ToggleProtectionInternal(true, false);
+                Dispatcher.BeginInvoke(new Action(HandleHostStateChanged));
+                return;
             }
-
-            if (_pauseMode == PauseModeNone)
-            {
-                _pausedSavedAdBlock = _config.EnableAdBlock;
-            }
-
-            _pauseMode = PauseModeAdBlock;
-            _pauseUntilUtc = DateTime.UtcNow.AddMinutes(minutes);
-            _config.EnableAdBlock = false;
-            _config.Save();
 
             _updatingUi = true;
-            _chkAdBlock.IsChecked = false;
-            _updatingUi = false;
+            try
+            {
+                if (_chkAdBlock != null) _chkAdBlock.IsChecked = _config.EnableAdBlock;
+            }
+            finally
+            {
+                _updatingUi = false;
+            }
 
-            _proxy.UpdateSettings(_config);
             RefreshAdBlockStatusLabel();
-            EnsurePauseTimerRunning();
-            UpdatePauseTrayUi();
-            HandleProxyLog(string.Format("[PAUSE] AdBlock paused for {0} min.", minutes));
-        }
-
-        private void PauseShieldTemporary(int minutes)
-        {
-            if (_pauseMode == PauseModeAdBlock)
+            if (!string.IsNullOrEmpty(_host.LastWarning))
             {
-                _config.EnableAdBlock = _pausedSavedAdBlock;
-                _config.Save();
-                _updatingUi = true;
-                _chkAdBlock.IsChecked = _config.EnableAdBlock;
-                _updatingUi = false;
-            }
-
-            _pauseMode = PauseModeShield;
-            _pauseUntilUtc = DateTime.UtcNow.AddMinutes(minutes);
-            ToggleProtectionInternal(false, false);
-            EnsurePauseTimerRunning();
-            UpdatePauseTrayUi();
-            UpdateProtectionStatusUi();
-            HandleProxyLog(string.Format("[PAUSE] Shield paused for {0} min.", minutes));
-        }
-
-        private void ResumeFromPause()
-        {
-            int oldMode = _pauseMode;
-            ClearPauseState();
-
-            if (oldMode == PauseModeAdBlock)
-            {
-                _config.EnableAdBlock = _pausedSavedAdBlock;
-                _config.Save();
-                _updatingUi = true;
-                _chkAdBlock.IsChecked = _config.EnableAdBlock;
-                _updatingUi = false;
-                ApplyDashboardChange();
-                HandleProxyLog("[RESUME] AdBlock auto-resumed.");
-            }
-            else if (oldMode == PauseModeShield)
-            {
-                ToggleProtectionInternal(true, false);
-                HandleProxyLog("[RESUME] Shield auto-resumed.");
-            }
-            UpdatePauseTrayUi();
-        }
-
-        private void EnsurePauseTimerRunning()
-        {
-            if (_pauseTimer == null)
-            {
-                _pauseTimer = new DispatcherTimer();
-                _pauseTimer.Interval = TimeSpan.FromSeconds(15);
-                _pauseTimer.Tick += delegate(object s, EventArgs e)
-                {
-                    if (_pauseMode == PauseModeNone)
-                    {
-                        _pauseTimer.Stop();
-                        return;
-                    }
-                    if (DateTime.UtcNow >= _pauseUntilUtc)
-                    {
-                        ResumeFromPause();
-                    }
-                    else
-                    {
-                        UpdatePauseTrayUi();
-                    }
-                };
-            }
-            _pauseTimer.Start();
-        }
-
-        private void ClearPauseState()
-        {
-            _pauseMode = PauseModeNone;
-            _pauseUntilUtc = DateTime.MinValue;
-            if (_pauseTimer != null) _pauseTimer.Stop();
-            UpdatePauseTrayUi();
-        }
-
-        private void UpdatePauseTrayUi()
-        {
-            if (_trayResumeItem == null) return;
-            bool paused = _pauseMode != PauseModeNone;
-            _trayResumeItem.Visible = paused;
-            if (paused)
-            {
-                int mins = Math.Max(1, (int)Math.Ceiling((_pauseUntilUtc - DateTime.UtcNow).TotalMinutes));
-                _trayResumeItem.Text = T("tray_resume") + " (" + string.Format(T("tray_paused_msg"), mins) + ")";
+                ShowDashboardWarning(_host.LastWarning);
             }
             else
             {
-                _trayResumeItem.Text = T("tray_resume");
+                ClearDashboardWarning();
             }
+            UpdateProtectionStatusUi();
         }
 
         private void UpdateProtectionStatusUi()
         {
+            if (_txtPowerBtn == null) return;
+            int pauseMode = _host.PauseMode;
             _txtPowerBtn.Text = _isProtected ? T("btn_disable") : T("btn_enable");
 
             if (_isProtected)
             {
                 DohProvider p = DohProvider.FindById(_config.DohProviderId, _config.CustomDohUrl);
-                _statusDot.Fill = (_pauseMode == PauseModeAdBlock) ? WpfTheme.AccentAmber : WpfTheme.AccentGreen;
+                _statusDot.Fill = (pauseMode == TrayHost.PauseModeAdBlock) ? WpfTheme.AccentAmber : WpfTheme.AccentGreen;
                 _txtStatusBadge.Text = T("status_on");
                 _txtStatusBadge.Foreground = WpfTheme.AccentGreen;
 
@@ -1782,21 +1514,10 @@ namespace NologGuard
                     _proxy.ListenPort, p.Host, _cmbSniMode.SelectedItem ?? string.Empty);
 
                 UpdateWindowIcon(true);
-                if (_trayIcon != null)
-                {
-                    _trayIcon.Icon = _iconOn;
-                    string txt = "NologGuard - Protected (" + p.Host + ")";
-                    if (_pauseMode == PauseModeAdBlock)
-                    {
-                        int mins = Math.Max(1, (int)Math.Ceiling((_pauseUntilUtc - DateTime.UtcNow).TotalMinutes));
-                        txt = "NologGuard - " + string.Format(T("tray_paused_msg"), mins);
-                    }
-                    _trayIcon.Text = txt.Length > 63 ? txt.Substring(0, 63) : txt;
-                }
             }
             else
             {
-                _statusDot.Fill = (_pauseMode == PauseModeShield) ? WpfTheme.AccentAmber : WpfTheme.TextMuted;
+                _statusDot.Fill = (pauseMode == TrayHost.PauseModeShield) ? WpfTheme.AccentAmber : WpfTheme.TextMuted;
                 _txtStatusBadge.Text = T("status_off");
                 _txtStatusBadge.Foreground = WpfTheme.TextSecondary;
 
@@ -1809,17 +1530,6 @@ namespace NologGuard
                 _txtStatusHint.Text = T("status_hint_off");
 
                 UpdateWindowIcon(false);
-                if (_trayIcon != null)
-                {
-                    _trayIcon.Icon = _iconOff;
-                    string txt = "NologGuard - Disabled";
-                    if (_pauseMode == PauseModeShield)
-                    {
-                        int mins = Math.Max(1, (int)Math.Ceiling((_pauseUntilUtc - DateTime.UtcNow).TotalMinutes));
-                        txt = "NologGuard - " + string.Format(T("tray_paused_msg"), mins);
-                    }
-                    _trayIcon.Text = txt.Length > 63 ? txt.Substring(0, 63) : txt;
-                }
             }
 
             if (_tbPort != null) _tbPort.IsEnabled = !_isProtected;
@@ -1863,9 +1573,9 @@ namespace NologGuard
         private void HandleDashboardToggleChanged(object sender, RoutedEventArgs e)
         {
             if (_updatingUi) return;
-            if (sender == _chkAdBlock && _pauseMode == PauseModeAdBlock)
+            if (sender == _chkAdBlock && _host.PauseMode == TrayHost.PauseModeAdBlock)
             {
-                ClearPauseState();
+                _host.ClearPauseState();
             }
             ApplyDashboardChange();
         }
@@ -1891,18 +1601,7 @@ namespace NologGuard
         private void ApplyDashboardChange()
         {
             SyncDashboardToConfig();
-            DohProvider provider = DohProvider.FindById(_config.DohProviderId, _config.CustomDohUrl);
-            _resolver.SetProvider(provider);
-            _proxy.UpdateSettings(_config);
-            RefreshAdBlockStatusLabel();
-            if (_isProtected)
-            {
-                string warn;
-                WindowsNetworkHelper.ApplyProtection(_config, _proxy.ListenPort, out warn);
-                if (!string.IsNullOrEmpty(warn)) ShowDashboardWarning(warn);
-                else ClearDashboardWarning();
-                UpdateProtectionStatusUi();
-            }
+            _host.ApplyConfigChanges(true);
         }
 
         private void HandleAdminToggleChanged(object sender, RoutedEventArgs e)
@@ -1912,7 +1611,7 @@ namespace NologGuard
             if (chk != null && chk.IsChecked == true && !WindowsNetworkHelper.IsAdministrator())
             {
                 SyncDashboardToConfig();
-                if (PromptAndRestartAdmin(true))
+                if (_host.RestartAsAdmin(this, true))
                 {
                     return;
                 }
@@ -1928,42 +1627,8 @@ namespace NologGuard
                 {
                     WindowsNetworkHelper.RestoreAll();
                 }
-                string warn;
-                WindowsNetworkHelper.ApplyProtection(_config, _proxy.ListenPort, out warn);
-                if (!string.IsNullOrEmpty(warn)) ShowDashboardWarning(warn);
-                else ClearDashboardWarning();
+                _host.ApplyConfigChanges(true);
             }
-        }
-
-        private bool PromptAndRestartAdmin(bool askConfirmation)
-        {
-            if (askConfirmation)
-            {
-                MessageBoxResult res = MessageBox.Show(
-                    this,
-                    T("admin_needed_msg"),
-                    T("admin_needed_title"),
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
-                if (res != MessageBoxResult.Yes)
-                {
-                    return false;
-                }
-            }
-
-            bool wasProtected = _isProtected;
-            if (_isProtected) ToggleProtection(false);
-            string args = wasProtected ? "--relaunch --enable-shield" : "--relaunch";
-            if (WindowsNetworkHelper.RestartAsAdministrator(args))
-            {
-                SingleInstanceLock.ReleaseCurrent();
-                _forceClose = true;
-                Application.Current.Shutdown();
-                return true;
-            }
-
-            if (wasProtected) ToggleProtection(true);
-            return false;
         }
 
         private async void HandleTestDohClick(object sender, RoutedEventArgs e)
@@ -2251,16 +1916,15 @@ namespace NologGuard
             _txtSettingsStatus.Text = T("set_saved");
         }
 
-        private void HandleProxyLog(string msg)
+        private void HandleHostLogAdded(string formattedLine)
         {
-            string line = DateTime.Now.ToString("HH:mm:ss") + "  " + msg;
             lock (_logLock)
             {
-                if (_pendingLogs.Count > MaxLogEntries)
+                if (_pendingLogs.Count >= MaxLogEntries)
                 {
                     _pendingLogs.Dequeue();
                 }
-                _pendingLogs.Enqueue(line);
+                _pendingLogs.Enqueue(formattedLine);
             }
         }
 
@@ -2295,116 +1959,50 @@ namespace NologGuard
             }
         }
 
-        private void ScheduleTrayMemoryTrim()
-        {
-            if (_trimTimer == null)
-            {
-                _trimTimer = new DispatcherTimer(DispatcherPriority.Normal);
-                _trimTimer.Interval = TimeSpan.FromMilliseconds(400);
-                _trimTimer.Tick += delegate(object s, EventArgs e)
-                {
-                    _trimTimer.Stop();
-                    if (!IsVisible)
-                    {
-                        WindowsNetworkHelper.TrimMemory();
-                    }
-                };
-            }
-            _trimTimer.Stop();
-            _trimTimer.Start();
-
-            Task.Run(async delegate()
-            {
-                await Task.Delay(900).ConfigureAwait(false);
-                bool stillHidden = false;
-                try
-                {
-                    stillHidden = Dispatcher.Invoke(delegate() { return !IsVisible; });
-                }
-                catch
-                {
-                }
-                if (stillHidden)
-                {
-                    WindowsNetworkHelper.TrimMemory();
-                }
-            });
-        }
-
-        private void RestoreFromTray()
-        {
-            if (_trimTimer != null) _trimTimer.Stop();
-            ShowInTaskbar = true;
-            Show();
-            WindowState = WindowState.Normal;
-            Activate();
-            HandleStatsTick(this, EventArgs.Empty);
-            if (_statsTimer != null) _statsTimer.Start();
-        }
-
-        private void ExitCompletely()
-        {
-            _forceClose = true;
-            Close();
-        }
-
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (!_forceClose && _config.MinimizeToTray)
+            if (!_host.IsShuttingDown && _config.MinimizeToTray)
             {
-                e.Cancel = true;
-                if (_statsTimer != null) _statsTimer.Stop();
-                Hide();
-                ShowInTaskbar = false;
-                ScheduleTrayMemoryTrim();
-                if (!_trayHintShown && _trayIcon != null)
-                {
-                    _trayHintShown = true;
-                    _trayIcon.ShowBalloonTip(2000, "NologGuard", T("tray_running"), Forms.ToolTipIcon.Info);
-                }
+                _host.NotifyMinimizedToTray();
+                base.OnClosing(e);
                 return;
             }
 
-            ShutdownSafely();
             base.OnClosing(e);
+            if (!_host.IsShuttingDown)
+            {
+                _host.ShutdownAndExit();
+            }
         }
 
-        private void ShutdownSafely()
+        protected override void OnClosed(EventArgs e)
         {
+            _host.StateChanged -= HandleHostStateChanged;
+            _host.LogAdded -= HandleHostLogAdded;
+
             if (_statsTimer != null)
             {
                 _statsTimer.Stop();
                 _statsTimer = null;
             }
-            if (_pauseTimer != null)
+
+            if (_langPopup != null)
             {
-                _pauseTimer.Stop();
-                _pauseTimer = null;
-            }
-            if (_trimTimer != null)
-            {
-                _trimTimer.Stop();
-                _trimTimer = null;
+                _langPopup.IsOpen = false;
+                _langPopup = null;
             }
 
-            if (_isProtected)
+            if (_tbLog != null)
             {
-                _proxy.Stop();
-                WindowsNetworkHelper.RestoreAll();
-                _isProtected = false;
+                _tbLog.Clear();
+            }
+            _logHistory.Clear();
+            lock (_logLock)
+            {
+                _pendingLogs.Clear();
             }
 
-            if (_trayIcon != null)
-            {
-                _trayIcon.Visible = false;
-                _trayIcon.Dispose();
-                _trayIcon = null;
-            }
-
-            if (_proxy != null) { _proxy.Dispose(); }
-            if (_resolver != null) { _resolver.Dispose(); }
-            if (_iconOff != null) { _iconOff.Dispose(); }
-            if (_iconOn != null) { _iconOn.Dispose(); }
+            base.OnClosed(e);
         }
     }
 }

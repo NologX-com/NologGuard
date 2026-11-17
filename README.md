@@ -48,8 +48,8 @@ Normally, even when you visit an `https://` website, your ISP can still tell **w
 6. **2 Optional System-Wide Admin Features:**
    - **Apply Windows 11 System DoH:** Sets physical adapter DNS + Windows 11 native DoH templates (`HKLM\...\Dnscache`) so non-browser apps use DoH too; automatically snapshots and restores your previous DNS settings on Stop/Exit.
    - **Block QUIC UDP 443 via Firewall:** Adds outbound rule `NologGuard_Block_QUIC_UDP_443` while protected and deletes it cleanly on Stop/Exit.
-7. **System Tray Optimization & Quick Pause:**
-   - **Auto-Trim RAM in Tray:** When minimized/closed to System Tray, compacts GC heaps and trims working set (`SetProcessWorkingSetSize` + `EmptyWorkingSet`), reducing background memory footprint dramatically (measured ~1–16 MB working set in tray).
+7. **~5 MB Background RAM in System Tray & Quick Pause:**
+   - **Headless Tray Architecture + Auto-Trim:** Uses a lightweight `TrayHost` controller that unloads the WPF window when closed to the System Tray (`Minimize to Tray`) or started via `--minimized`, stores 240,000+ AdBlock domains in compact 64-bit `ulong[]` hashes (~2 MB, zero string heap), pools proxy socket buffers, and periodically trims idle pages — keeping Task Manager background memory around **`~5 MB`** (measured ~3.9–5.9 MB Private Working Set in tray even with `HaGeZi Pro + hostsVN` active; ~14 MB during active HTTPS bursts).
    - **Tray Quick Pause:** Right-click the tray icon to pause **AdBlock (5 min)** or **Shield (15 min)** with an automatic countdown timer, or click **Resume Now**.
 8. **Zero-Trace Privacy, 32 Languages (incl. RTL) & CLI Tools:**
    - Logs live strictly in volatile RAM (last 300 lines, never written to disk).
@@ -108,6 +108,15 @@ Or build with MSBuild:
 ```
 
 Installer packaging & publishing guide: [installer/NologGuard.iss](installer/NologGuard.iss) • [docs/PUBLISHING.md](docs/PUBLISHING.md)
+
+---
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+* **Authors / Committers, Reviewers, and Approvers:** Maintainers of [NologX-com/NologGuard](https://github.com/NologX-com/NologGuard/graphs/contributors) (`NologX-com`).
+* **Privacy policy:** See [PRIVACY.md](PRIVACY.md) — this program does not log browsing history to disk and only connects to network endpoints explicitly configured by the user (selected DoH resolver, manual update check, or user-selected filter lists).
 
 ---
 

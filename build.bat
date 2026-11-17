@@ -32,6 +32,7 @@ echo [1/3] Compiling NologGuard.exe...
     src\ProxyServer.cs ^
     src\Strings.cs ^
     src\TlsClientHelloParser.cs ^
+    src\TrayHost.cs ^
     src\WindowsNetworkHelper.cs ^
     src\WinHttpHelper.cs ^
     src\WpfTheme.cs ^

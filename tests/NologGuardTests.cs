@@ -30,6 +30,7 @@ namespace NologGuardTests
             RunTest("ProxyServer_FragmentedLargeClientHelloBuffering", TestProxyFragmentedLargeClientHello);
             RunTest("ProxyServer_FixedChunksAndPlainHttp", TestProxyFixedChunksAndPlainHttp);
             RunTest("DomainBlocklist_FormatsAndExceptions", TestDomainBlocklistFormats);
+            RunTest("DomainBlocklist_CompactHashDedupeAndSeal", TestDomainBlocklistCompactHashDedupe);
             RunTest("BlocklistPreset_HostsVnAndCustomUrl", TestBlocklistPresetHostsVnAndCustom);
             RunTest("ProxyServer_AdBlockAndWhitelistPrecedence", TestProxyAdBlockAndPrecedence);
             RunTest("ProxyServer_VerifyLoopbackAdBlock", TestProxyVerifyLoopbackAdBlock);
@@ -491,6 +492,37 @@ namespace NologGuardTests
             Assert(!bl.IsBlocked("example.net"), "Cosmetic rule must not over-block domain");
             Assert(!bl.IsBlocked("localhost"), "Localhost never blocked");
             Assert(!bl.IsBlocked("127.0.0.1"), "IP literal never blocked");
+        }
+
+        private static void TestDomainBlocklistCompactHashDedupe()
+        {
+            DomainBlocklist bl = new DomainBlocklist();
+            bl.LoadLines(new string[] {
+                "||Ads.Example.Test^",
+                "0.0.0.0 ads.example.test",
+                "127.0.0.1 ADS.EXAMPLE.TEST",
+                "tracker-1.example.test"
+            });
+            bl.Seal();
+
+            Assert(bl.BlockedRuleCount == 2, "Duplicate case-variant rules must deduplicate to 2, got " + bl.BlockedRuleCount);
+            Assert(bl.IsBlocked("sub.ADS.example.test"), "Compact hash must match mixed-case subdomains");
+            Assert(!bl.IsBlocked("tracker-2.example.test"), "Sibling domain must not false-match");
+
+            bl.AddRuleLine("tracker-2.example.test");
+            Assert(bl.IsBlocked("tracker-2.example.test"), "Appending rules after Seal must re-seal seamlessly");
+            Assert(bl.BlockedRuleCount == 3, "Expected 3 unique rules after append, got " + bl.BlockedRuleCount);
+
+            DomainBlocklist bulk = new DomainBlocklist();
+            for (int i = 0; i < 5000; i++)
+            {
+                bulk.AddRuleLine("ad-" + i + ".bulk-test.example");
+                if ((i & 1) == 0) bulk.AddRuleLine("0.0.0.0 AD-" + i + ".bulk-test.example");
+            }
+            bulk.Seal();
+            Assert(bulk.BlockedRuleCount == 5000, "Expected 5000 deduplicated bulk rules, got " + bulk.BlockedRuleCount);
+            Assert(bulk.IsBlocked("sub.ad-4321.bulk-test.example"), "Bulk rule lookup failed");
+            Assert(!bulk.IsBlocked("ad-5001.bulk-test.example"), "Bulk rule unexpected match");
         }
 
         private static void TestBlocklistPresetHostsVnAndCustom()

@@ -31,7 +31,7 @@ jobs:
           if ("${{ github.ref }}" -like "refs/tags/v*") {
             $ver = $tag.TrimStart('v').Split('-')[0]
           } else {
-            $ver = "1.2.0"
+            $ver = "1.2.2"
           }
           "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "Resolved AppVersion=$ver"

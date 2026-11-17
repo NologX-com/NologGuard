@@ -49,6 +49,7 @@
     <Compile Include="src\ProxyServer.cs" />
     <Compile Include="src\Strings.cs" />
     <Compile Include="src\TlsClientHelloParser.cs" />
+    <Compile Include="src\TrayHost.cs" />
     <Compile Include="src\WindowsNetworkHelper.cs" />
     <Compile Include="src\WinHttpHelper.cs" />
     <Compile Include="src\WpfTheme.cs" />

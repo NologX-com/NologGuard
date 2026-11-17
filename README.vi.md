@@ -48,8 +48,8 @@ Bình thường khi bạn mở một trang web `https://`, dù nội dung bên t
 6. **2 tùy chọn toàn hệ thống (Cần quyền Admin nếu bật):**
    - **Bật DoH toàn Windows 11:** Cấu hình DoH gốc trực tiếp trên card mạng vật lý + `HKLM\...\Dnscache` cho cả app ngoài trình duyệt; tự sao lưu DNS cũ và hoàn nguyên khi tắt.
    - **Chặn QUIC UDP 443 qua Firewall:** Dựng rule `NologGuard_Block_QUIC_UDP_443` khi khiên bật và tự xóa sạch khi tắt.
-7. **Khay hệ thống (System Tray) tối ưu RAM & Tạm dừng nhanh:**
-   - **Tự thu gọn RAM:** Khi bấm `✕` thu xuống khay hệ thống, NologGuard tạm dừng timer UI, dọn rác GC và gọi `SetProcessWorkingSetSize` + `EmptyWorkingSet` giúp RAM Working Set chạy nền giảm xuống mức rất thấp (~1–16 MB).
+7. **Siêu nhẹ chỉ ~5 MB RAM khi chạy nền (System Tray) & Tạm dừng nhanh:**
+   - **Kiến trúc Tray không giữ cửa sổ ngầm + Tự thu gọn RAM:** Khi bấm `✕` thu về khay hệ thống (hoặc chạy cùng Windows qua `--minimized`), NologGuard giải phóng hoàn toàn cửa sổ giao diện WPF (`TrayHost`), lưu hơn 240.000 tên miền lọc quảng cáo bằng mảng mã băm 64-bit gọn nhẹ (~2 MB thay vì hàng trăm nghìn chuỗi trên RAM), tái sử dụng bộ đệm socket và tự dọn RAM lúc rảnh — giữ mức RAM chạy nền trên Task Manager chỉ khoảng **`~5 MB`** (đo thực tế ~3,9–5,9 MB Private Working Set khi chạy nền kể cả khi bật bộ lọc lớn `HaGeZi Pro + hostsVN`; ~14 MB lúc truyền tải HTTPS liên tục).
    - **Tạm dừng nhanh:** Chuột phải icon khay hệ thống để chọn **Tạm dừng Chặn QC (5 phút)** hoặc **Tạm dừng Bảo vệ (15 phút)** với hẹn giờ tự bật lại, hoặc bấm **Tiếp tục ngay**.
 8. **Không lưu vết ra ổ cứng, 32 ngôn ngữ & Công cụ dòng lệnh:**
    - **Nhật ký** chỉ giữ tạm 300 dòng gần nhất trong **RAM**, tắt app là xóa sạch, tuyệt đối không ghi lịch sử duyệt web xuống ổ đĩa.
@@ -98,6 +98,15 @@ build.bat --live
 ```
 
 Tài liệu đóng gói & phát hành lên GitHub / SignPath / Microsoft Store: [installer/NologGuard.iss](installer/NologGuard.iss) • [docs/PUBLISHING.md](docs/PUBLISHING.md)
+
+---
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+* **Vai trò quản trị ký số (`Authors / Reviewers / Approvers`):** Nhóm phát triển dự án [NologX-com/NologGuard](https://github.com/NologX-com/NologGuard/graphs/contributors) (`NologX-com`).
+* **Chính sách quyền riêng tư:** Xem [PRIVACY.md](PRIVACY.md) — phần mềm không ghi lịch sử duyệt web ra đĩa và chỉ kết nối tới máy chủ DoH, bộ lọc hoặc kiểm tra cập nhật khi người dùng cấu hình/bấm chọn.
 
 ---
 
