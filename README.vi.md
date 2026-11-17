@@ -1,6 +1,6 @@
 # NologGuard (Hướng dẫn Tiếng Việt)
 
-**Tạo bởi [NologX.com](https://nologx.com)** • [🇬🇧 English README](README.md) • [🔒 Chính sách quyền riêng tư](PRIVACY.md)
+**Tạo bởi [NologX.com](https://nologx.com)** • [🌐 Trang Giới Thiệu (Landing Page)](https://nologx-com.github.io/NologGuard/) • [🇬🇧 English README](README.md) • [🔒 Chính sách quyền riêng tư](PRIVACY.md)
 
 **Công cụ 1-nút-bấm bảo vệ quyền riêng tư khi lướt web trên Windows** — Tích hợp **mã hóa DNS (DoH HTTP/2)**, **cắt nhỏ gói tin TLS SNI để giấu tên miền truy cập khỏi hệ thống lọc ISP**, **chặn/bỏ qua QUIC**, **chặn quảng cáo & tracker**, và **danh sách ngoại lệ** trong một ứng dụng gọn nhẹ (~260 KB), giữ nguyên IP thật và 100% tốc độ mạng gốc.
 

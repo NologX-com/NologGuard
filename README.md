@@ -1,6 +1,6 @@
 # NologGuard
 
-**Created by [NologX.com](https://nologx.com)** • [🇻🇳 Đọc hướng dẫn Tiếng Việt](README.vi.md) • [🔒 Privacy Policy](PRIVACY.md)
+**Created by [NologX.com](https://nologx.com)** • [🌐 Landing Page](https://nologx-com.github.io/NologGuard/) • [🇻🇳 Đọc hướng dẫn Tiếng Việt](README.vi.md) • [🔒 Privacy Policy](PRIVACY.md)
 
 **1-Click Windows Privacy Shield** — Combines encrypted **Bootstrapped HTTP/2 DNS-over-HTTPS (DoH)**, **TLS SNI Fragmentation**, **QUIC Bypass/Firewall Blocking**, **Domain-Level AdBlocker & Anti-Tracking**, and a **Smart Whitelist** into one lightweight Windows desktop utility while keeping your real IP address and native connection speed.
 

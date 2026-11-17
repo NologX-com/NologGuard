@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NologGuard — Lá Chắn Riêng Tư 1-Click Cho Windows | NoLogX.com</title>
+<meta name="description" content="NologGuard (tạo bởi NoLogX.com) — DoH HTTP/2, cắt nhỏ SNI giấu web truy cập khỏi DPI nhà mạng (ISP), chặn quảng cáo & tracker không giải mã HTTPS, giữ nguyên IP thật và 100% tốc độ gốc." />
+<link rel="canonical" href="https://nologx.com/NologGuard" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="NoLogX.com" />
+<meta property="og:title" content="NologGuard — Lá Chắn Riêng Tư 1-Click Cho Windows | NoLogX.com" />
+<meta property="og:description" content="Giấu DNS & tên miền HTTPS trước DPI thụ động của nhà mạng, chặn quảng cáo/tracker mức tên miền, giữ nguyên IP thật & tốc độ mạng gốc. Mã nguồn mở MIT." />
+<meta property="og:url" content="https://nologx.com/NologGuard" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2310b981'/%3E%3Cstop offset='1' stop-color='%230e7490'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='15' fill='url(%23g)'/%3E%3Cpath d='M32 10L50 18L47.5 36C46.5 44.5 39.8 51.2 32 54.5C24.2 51.2 17.5 44.5 16.5 36L14 18Z' fill='rgba(255,255,255,0.2)' stroke='white' stroke-width='3.5' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg-canvas: #090d16;
+  --surface-panel: #111622;
+  --surface-sub: #0c101a;
+  --surface-pill: #161d2c;
+  --border-hair: #1e2738;
+  --border-hi: #2d3b55;
+  --emerald: #10b981;
+  --emerald-dark: #065f46;
+  --sky: #38bdf8;
+  --blue: #2563eb;
+  --rose: #fb7185;
+  --amber: #f59e0b;
+  --text-1: #f8fafc;
+  --text-2: #94a3b8;
+  --text-3: #64748b;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--bg-canvas); color: var(--text-1); font-family: var(--font-body); }
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 460px at 14% -4%, rgba(16, 185, 129, 0.14), transparent 60%),
+    radial-gradient(820px 420px at 88% 2%, rgba(56, 189, 248, 0.12), transparent 60%),
+    var(--bg-canvas);
+  color: var(--text-1);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+code, pre { font-family: var(--font-mono); }
+
+.container { max-width: 1140px; margin: 0 auto; padding: 0 20px; }
+
+/* Nav */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  backdrop-filter: blur(14px);
+  background: rgba(9, 13, 22, 0.84);
+  border-bottom: 1px solid var(--border-hair);
+}
+.nav-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  min-height: 66px; padding: 8px 0;
+}
+.brand-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-logo {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, #10b981, #0e7490);
+  display: grid; place-items: center;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+}
+.brand-title { font-family: var(--font-display); font-weight: 800; font-size: 18px; line-height: 1.25; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.brand-ver { font-family: var(--font-mono); font-size: 11px; color: var(--emerald); background: rgba(16,185,129,.12); border: 1px solid rgba(16,185,129,.28); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.brand-by { font-size: 12px; color: var(--sky); font-weight: 600; white-space: nowrap; }
+.brand-by:hover { text-decoration: underline; }
+
+.nav-links { display: flex; align-items: center; gap: 22px; font-size: 14px; color: var(--text-2); font-weight: 500; }
+.nav-links a:hover { color: var(--text-1); }
+.nav-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.lang-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-pill); border: 1px solid var(--border-hi);
+  color: var(--text-1); font-size: 12.5px; font-weight: 700;
+  padding: 7px 12px; border-radius: 9px; cursor: pointer;
+}
+.lang-btn:hover { border-color: var(--sky); }
+.btn-sm {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--surface-pill); border: 1px solid var(--border-hi);
+  color: var(--text-1); padding: 7px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
+}
+.btn-sm:hover { border-color: var(--emerald); color: #fff; }
+
+/* Hero */
+.hero { padding: 54px 0 46px; }
+.hero-grid { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 38px; align-items: center; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 600; color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 5px 12px; border-radius: 999px; margin-bottom: 16px;
+}
+.eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--emerald); box-shadow: 0 0 10px var(--emerald); }
+h1 {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(30px, 4.1vw, 46px); line-height: 1.15; letter-spacing: -0.025em;
+  margin: 0 0 16px;
+}
+.grad-text { background: linear-gradient(95deg, #f8fafc 25%, #34d399 65%, #38bdf8 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-sub { font-size: 16.5px; color: var(--text-2); margin: 0 0 24px; max-width: 58ch; }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff; font-weight: 700; font-size: 15px;
+  padding: 13px 22px; border-radius: 12px;
+  border: 1px solid rgba(110, 231, 183, 0.45);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.28);
+  transition: transform .15s ease, filter .15s ease;
+}
+.btn-primary:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--surface-panel); border: 1px solid var(--border-hi);
+  color: var(--text-1); font-weight: 600; font-size: 14.5px;
+  padding: 13px 18px; border-radius: 12px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.btn-secondary:hover { border-color: var(--sky); background: var(--surface-pill); }
+
+.trust-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  font-size: 12px; color: var(--text-2);
+  background: var(--surface-panel); border: 1px solid var(--border-hair);
+  padding: 5px 11px; border-radius: 999px;
+}
+.pill strong { color: var(--text-1); }
+
+/* App Mockup */
+.app-mock {
+  background: #0a0f1c; border: 1px solid #263450; border-radius: 16px;
+  padding: 14px; box-shadow: 0 26px 70px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(56,189,248,0.08);
+}
+.mock-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mock-brand { display: flex; align-items: center; gap: 9px; }
+.mock-icon { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg,#10b981,#0e7490); display:grid; place-items:center; }
+.mock-tabs {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 4px;
+  background: #11192c; border: 1px solid #263450; border-radius: 9px; padding: 3px; margin-bottom: 10px;
+}
+.mock-tab {
+  border: 0; background: transparent; color: var(--text-2); font-size: 11.5px; font-weight: 600;
+  padding: 6px 4px; border-radius: 6px; cursor: pointer;
+}
+.mock-tab.active { background: #19243d; color: var(--sky); }
+.mock-card { background: #11192c; border: 1px solid #263450; border-radius: 11px; padding: 13px; margin-bottom: 9px; }
+.mock-shield-btn {
+  width: 100%; border: 1.5px solid #6ee7b7; border-radius: 999px; padding: 10px 14px;
+  background: linear-gradient(90deg, #10b981, #059669); color: #fff; font-weight: 800; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+}
+.mock-shield-btn.off { background: linear-gradient(90deg, #2563eb, #1d4ed8); border-color: #60a5fa; }
+.mock-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.mock-stat { background: #11192c; border: 1px solid #263450; border-radius: 9px; padding: 8px; }
+.mock-stat-v { font-family: var(--font-mono); font-weight: 700; font-size: 15px; }
+.mock-stat-k { font-size: 10.5px; color: var(--text-2); }
+
+/* Sections */
+section { padding: 56px 0; border-top: 1px solid var(--border-hair); }
+.sec-head { max-width: 720px; margin-bottom: 30px; }
+.sec-tag { font-family: var(--font-mono); font-size: 12px; color: var(--sky); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; display: block; }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(24px, 3vw, 34px); margin: 0 0 10px; letter-spacing: -0.02em; }
+.sec-desc { color: var(--text-2); font-size: 15.5px; margin: 0; }
+
+/* Why cards */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.card {
+  background: var(--surface-panel); border: 1px solid var(--border-hair); border-radius: 14px;
+  padding: 20px; transition: border-color .15s ease;
+}
+.card:hover { border-color: var(--border-hi); }
+.card h3 { font-family: var(--font-display); font-size: 16.5px; margin: 0 0 8px; }
+.card p { margin: 0; font-size: 14px; color: var(--text-2); }
+.card-bad { border-color: rgba(251, 113, 133, 0.25); background: linear-gradient(180deg, rgba(251,113,133,0.05), var(--surface-panel)); }
+.card-good { border-color: rgba(16, 185, 129, 0.42); background: linear-gradient(180deg, rgba(16,185,129,0.09), var(--surface-panel)); }
+.icon-box {
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 12px;
+  background: var(--surface-pill); border: 1px solid var(--border-hi); color: var(--sky); font-weight: 700;
+}
+.icon-box.green { color: var(--emerald); background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); }
+
+/* Flow Architecture */
+.flow-box {
+  background: var(--surface-sub); border: 1px solid var(--border-hair); border-radius: 16px;
+  padding: 22px; margin-bottom: 24px;
+}
+.flow-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.flow-node {
+  background: var(--surface-panel); border: 1px solid var(--border-hi); border-radius: 12px; padding: 14px; position: relative;
+}
+.flow-num { font-family: var(--font-mono); font-size: 11px; color: var(--emerald); font-weight: 700; margin-bottom: 5px; }
+
+/* Table */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border-hair); border-radius: 14px; background: var(--surface-panel); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+th, td { padding: 13px 16px; border-bottom: 1px solid var(--border-hair); vertical-align: top; }
+th { background: var(--surface-sub); color: var(--text-1); font-family: var(--font-display); font-size: 13.5px; }
+tr:last-child td { border-bottom: 0; }
+.tag-ok { color: #34d399; font-weight: 700; }
+.tag-warn { color: #fbbf24; font-weight: 600; }
+.tag-bad { color: #fb7185; font-weight: 600; }
+
+/* Steps Guide */
+.guide-step { display: flex; gap: 14px; align-items: flex-start; }
+.step-badge {
+  width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+  background: rgba(56,189,248,0.14); border: 1px solid rgba(56,189,248,0.35);
+  color: var(--sky); font-family: var(--font-mono); font-weight: 700; display: grid; place-items: center;
+}
+.code-inline {
+  background: var(--surface-sub); border: 1px solid var(--border-hi); color: #bae6fd;
+  padding: 2px 7px; border-radius: 6px; font-size: 12.5px; font-family: var(--font-mono);
+}
+
+/* Lang Chips */
+.lang-wrap { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.lang-chip { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: var(--surface-sub); border: 1px solid var(--border-hair); color: var(--text-2); }
+
+/* Footer */
+footer { border-top: 1px solid var(--border-hair); padding: 34px 0 44px; color: var(--text-2); font-size: 13.5px; }
+.footer-flex { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+.footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+.footer-links a:hover { color: var(--sky); }
+
+@media (max-width: 960px) {
+  .hero-grid, .grid-4, .flow-steps { grid-template-columns: 1fr 1fr; }
+  .nav-links { display: none; }
+}
+@media (max-width: 680px) {
+  .hero-grid, .grid-4, .grid-3, .grid-2, .flow-steps { grid-template-columns: 1fr; }
+  .mock-metrics { grid-template-columns: 1fr 1fr; }
+  .nav-inner { min-height: 60px; padding: 8px 0; gap: 10px; }
+  .brand-group { gap: 9px; }
+  .brand-logo { width: 32px; height: 32px; border-radius: 9px; }
+  .brand-title { font-size: 15.5px; gap: 4px 6px; line-height: 1.2; }
+  .brand-by { flex-basis: 100%; font-size: 11px; }
+  .nav-actions { gap: 6px; }
+  .lang-btn, .btn-sm { padding: 6px 9px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="container nav-inner">
+    <div class="brand-group">
+      <a href="#top" class="brand-logo" aria-label="NologGuard Logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.22)" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 2L20 5.5L19 13C18.5 17 15.5 20 12 21.5C8.5 20 5.5 17 5 13L4 5.5Z"/></svg>
+      </a>
+      <div>
+        <div class="brand-title">
+          <span>NologGuard</span>
+          <span class="brand-ver" id="nav-ver">v1.2.1</span>
+          <a class="brand-by" href="https://nologx.com" target="_blank" rel="noopener" data-i18n="created_by">tạo bởi NologX.com ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <a href="#why" data-i18n="nav_why">Tại sao nên dùng?</a>
+      <a href="#isp" data-i18n="nav_isp">Giấu web khỏi ISP</a>
+      <a href="#features" data-i18n="nav_features">Tính năng</a>
+      <a href="#guide" data-i18n="nav_guide">Hướng dẫn</a>
+    </nav>
+
+    <div class="nav-actions">
+      <button id="langToggle" class="lang-btn" type="button" title="Switch language / Đổi ngôn ngữ">🌐 <span id="langCodeLabel">VI</span></button>
+      <a class="btn-sm" href="https://github.com/NologX-com/NologGuard" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <section class="hero" style="border-top:0;">
+    <div class="container hero-grid">
+      <div>
+        <div class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="hero_badge">Mã nguồn mở MIT • Không Driver Kernel • 32 Ngôn ngữ</span></div>
+        <h1 class="grad-text" data-i18n="hero_title">Lá chắn riêng tư 1-Click cho Windows — Giữ nguyên IP thật &amp; tốc độ gốc</h1>
+        <p class="hero-sub" data-i18n="hero_sub">
+          NologGuard gộp <strong>DoH HTTP/2 mã hóa DNS</strong>, <strong>cắt gói TLS SNI để giấu tên miền truy cập khỏi DPI nhà mạng (ISP)</strong>, <strong>tắt rò rỉ QUIC</strong> và <strong>chặn quảng cáo/tracker</strong> trong một ứng dụng siêu nhẹ — không cần quyền Admin khi dùng hằng ngày.
+        </p>
+
+        <div class="cta-row">
+          <a id="dl-setup" class="btn-primary" href="https://github.com/NologX-com/NologGuard/releases/download/v1.2.1/NologGuard-Setup.exe">
+            <span>⬇</span>
+            <span data-i18n="cta_setup">Tải Bộ Cài Windows (.exe)</span>
+          </a>
+          <a id="dl-portable" class="btn-secondary" href="https://github.com/NologX-com/NologGuard/releases/download/v1.2.1/NologGuard.exe">
+            <span>⚡</span>
+            <span data-i18n="cta_portable">Bản Portable 1 File (~358 KB)</span>
+          </a>
+        </div>
+
+        <div class="trust-pills">
+          <span class="pill"><strong>No-Log:</strong> <span data-i18n="pill_nolog">0% ghi đĩa</span></span>
+          <span class="pill"><strong>RAM Tray:</strong> <span data-i18n="pill_ram">~1–16 MB chạy nền</span></span>
+          <span class="pill"><strong>AdBlock:</strong> <span data-i18n="pill_ab">hostsVN + Custom URL</span></span>
+          <span class="pill"><strong>Windows 10 / 11</strong> x64</span>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE APP PREVIEW -->
+      <div class="app-mock" aria-label="NologGuard UI Interactive Preview">
+        <div class="mock-head">
+          <div class="mock-brand">
+            <div class="mock-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="rgba(255,255,255,0.22)" stroke="#fff" stroke-width="2"><path d="M12 2L20 5.5L19 13C18.5 17 15.5 20 12 21.5C8.5 20 5.5 17 5 13L4 5.5Z"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:700;font-size:13.5px;">NologGuard <span style="font-size:10.5px;color:#64748b;" id="mock-ver">v1.2.1</span> <span style="font-size:10.5px;color:#38bdf8;">• by NologX.com</span></div>
+              <div style="font-size:10.5px;color:#94a3b8;" data-i18n="mock_sub">DoH + Cắt SNI + Chặn QC/Tracking • Giữ nguyên IP thật</div>
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:700;background:#19243d;color:#94a3b8;padding:3px 8px;border-radius:6px;">USER</span>
+        </div>
+
+        <div class="mock-tabs">
+          <button type="button" class="mock-tab active" data-mocktab="shield" data-i18n="tab_shield">Bảo vệ</button>
+          <button type="button" class="mock-tab" data-mocktab="adblock" data-i18n="tab_ab">Chặn QC</button>
+          <button type="button" class="mock-tab" data-mocktab="check" data-i18n="tab_check">Tự kiểm tra</button>
+          <button type="button" class="mock-tab" data-mocktab="tray" data-i18n="tab_tray">Khay hệ thống</button>
+        </div>
+
+        <div id="mock-pane-shield">
+          <div class="mock-card" style="text-align:center;">
+            <div id="mock-badge" style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:8px;" data-i18n="mock_protected">● ĐANG BẢO VỆ</div>
+            <button type="button" id="mockToggleBtn" class="mock-shield-btn">
+              <span>⏻</span> <span id="mockBtnText" data-i18n="mock_disable">TẮT BẢO VỆ</span>
+            </button>
+            <div id="mock-hint" style="font-family:var(--font-mono);font-size:11px;color:#94a3b8;margin-top:8px;">127.0.0.1:8899 • dns.quad9.net • Smart SNI</div>
+          </div>
+          <div class="mock-card" style="font-size:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#94a3b8;">DoH:</span><span style="color:#f8fafc;">Quad9 Security (9.9.9.9)</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:#94a3b8;">SNI:</span><span style="color:#f8fafc;" data-i18n="mock_sni_mode">Cắt giữa tên miền SNI</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">AdBlock:</span><span style="color:#34d399;" data-i18n="mock_ab_on">Đang bật (hostsVN / Starter)</span></div>
+          </div>
+          <div class="mock-metrics">
+            <div class="mock-stat"><div class="mock-stat-v" style="color:#10b981;">142</div><div class="mock-stat-k">SNI-Split</div></div>
+            <div class="mock-stat"><div class="mock-stat-v" style="color:#fb7185;">38</div><div class="mock-stat-k" data-i18n="stat_blocked">QC chặn</div></div>
+            <div class="mock-stat"><div class="mock-stat-v" style="color:#38bdf8;">94 (81)</div><div class="mock-stat-k">DoH (Cache)</div></div>
+            <div class="mock-stat"><div class="mock-stat-v" style="color:#f59e0b;">6</div><div class="mock-stat-k" data-i18n="stat_bypass">Ngoại lệ</div></div>
+          </div>
+        </div>
+
+        <div id="mock-pane-adblock" style="display:none;">
+          <div class="mock-card" style="font-size:12.5px;">
+            <div style="color:#34d399;font-weight:700;margin-bottom:6px;">● hostsVN + Built-in Starter + Custom URL</div>
+            <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;" data-i18n="mock_ab_desc">Chặn thẳng tại tầng Proxy (HTTP 403) trước khi phân giải DNS. Hỗ trợ thêm quy tắc riêng &amp; ngoại lệ @@.</div>
+            <pre style="margin:0;background:#0a0f1c;border:1px solid #263450;border-radius:8px;padding:9px;font-size:11.5px;color:#bae6fd;overflow-x:auto;">https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts
+# Ngoại lệ giữ hoạt động dịch vụ:
+@@analytics.example.com</pre>
+          </div>
+        </div>
+
+        <div id="mock-pane-check" style="display:none;">
+          <div class="mock-card" style="font-size:12.5px;">
+            <div style="font-weight:700;color:#38bdf8;margin-bottom:8px;" data-i18n="mock_diag_title">Kết quả 1-Click Self-Check:</div>
+            <div style="font-family:var(--font-mono);font-size:12px;color:#34d399;background:#0a0f1c;border:1px solid #065f46;border-radius:8px;padding:10px;">
+              ✓ Tự kiểm tra: DoH dns.quad9.net (42ms) • AdBlock 403 Loopback OK (62+ rules)
+            </div>
+            <p style="margin:9px 0 0;font-size:12px;color:#94a3b8;" data-i18n="mock_diag_desc">Kiểm tra đồng thời kết nối DoH HTTP/2 và thử kết nối Loopback xác nhận bộ lọc quảng cáo đang trả mã 403 chuẩn xác.</p>
+          </div>
+        </div>
+
+        <div id="mock-pane-tray" style="display:none;">
+          <div class="mock-card" style="font-size:12.5px;">
+            <div style="font-weight:700;color:#f8fafc;margin-bottom:8px;" data-i18n="mock_tray_title">Thu gọn Tray &amp; Tạm dừng nhanh</div>
+            <ul style="margin:0;padding-left:18px;color:#94a3b8;font-size:12.5px;line-height:1.8;">
+              <li data-i18n="mock_tray_1">Bấm ✕: tự dọn GC + Working Set xuống ~1–16 MB RAM</li>
+              <li data-i18n="mock_tray_2">Tạm dừng Chặn QC (5 phút) -> tự động bật lại</li>
+              <li data-i18n="mock_tray_3">Tạm dừng Bảo vệ (15 phút) -> tự phục hồi Proxy</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY USE NOLOGGUARD -->
+  <section id="why">
+    <div class="container">
+      <div class="sec-head">
+        <span class="sec-tag" data-i18n="why_tag">Tại sao phải dùng NologGuard?</span>
+        <h2 data-i18n="why_title">Vượt rào cản ISP &amp; bảo mật DNS mà không phải hy sinh tốc độ hay IP thật</h2>
+        <p class="sec-desc" data-i18n="why_desc">So sánh nhanh giữa lướt web mặc định, VPN truyền thống, các tool dòng lệnh phức tạp và NologGuard.</p>
+      </div>
+
+      <div class="grid-4">
+        <div class="card card-bad">
+          <div class="icon-box" style="color:var(--rose);">ISP</div>
+          <h3 data-i18n="why_1_t">Mặc định (Không bảo vệ)</h3>
+          <p data-i18n="why_1_d">Nhà mạng đọc hết tên miền qua DNS UDP 53, TLS SNI và QUIC. Dễ bị chặn web, theo dõi lịch sử truy cập và ngập tracker quảng cáo.</p>
+        </div>
+        <div class="card card-bad">
+          <div class="icon-box" style="color:var(--amber);">VPN</div>
+          <h3 data-i18n="why_2_t">VPN truyền thống</h3>
+          <p data-i18n="why_2_d">Làm chậm băng thông, tăng ping khi chơi game/họp online, đổi IP nước ngoài khiến app ngân hàng, ví điện tử và CAPTCHA báo lỗi liên tục.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box">CMD</div>
+          <h3 data-i18n="why_3_t">Tool rời / Script thủ công</h3>
+          <p data-i18n="why_3_d">Phải sửa Registry DoH, chạy file `.cmd` quyền Admin, cài driver kernel dễ đụng Anti-cheat game hoặc mất mạng nếu quên tắt.</p>
+        </div>
+        <div class="card card-good">
+          <div class="icon-box green">✓</div>
+          <h3 data-i18n="why_4_t">NologGuard (NoLogX.com)</h3>
+          <p data-i18n="why_4_d">1 nút bấm gọn sạch: không driver kernel, không cần Admin hằng ngày, giữ 100% IP thật &amp; tốc độ, tự khôi phục mạng an toàn.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT HIDES SITES FROM ISP -->
+  <section id="isp">
+    <div class="container">
+      <div class="sec-head">
+        <span class="sec-tag" data-i18n="isp_tag">Bảo vệ trước nhà mạng (ISP)</span>
+        <h2 data-i18n="isp_title">Cách NologGuard giấu tên miền web truy cập khỏi hệ thống lọc ISP</h2>
+        <p class="sec-desc" data-i18n="isp_desc">Ngay cả khi dùng HTTPS, gói tin kết nối đầu tiên vẫn lộ tên miền ở 3 nơi (DNS, TLS SNI và QUIC). NologGuard xử lý đồng thời cả 3 tầng.</p>
+      </div>
+
+      <div class="flow-box">
+        <div class="flow-steps">
+          <div class="flow-node">
+            <div class="flow-num">01 / BROWSER</div>
+            <h3 style="margin:0 0 6px;font-size:15px;" data-i18n="flow_1_t">Trình duyệt / App</h3>
+            <p style="margin:0;font-size:13px;color:var(--text-2);" data-i18n="flow_1_d">Gửi HTTP CONNECT vào 127.0.0.1:8899 — trình duyệt tự bỏ QUIC UDP 443.</p>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">02 / ADBLOCK</div>
+            <h3 style="margin:0 0 6px;font-size:15px;" data-i18n="flow_2_t">Lọc tên miền QC</h3>
+            <p style="margin:0;font-size:13px;color:var(--text-2);" data-i18n="flow_2_d">Trùng danh sách chặn sẽ trả 403 ngay lập tức trước khi hỏi DNS hay mở TCP.</p>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">03 / DOH HTTP/2</div>
+            <h3 style="margin:0 0 6px;font-size:15px;" data-i18n="flow_3_t">Giấu DNS khỏi ISP</h3>
+            <p style="margin:0;font-size:13px;color:var(--text-2);" data-i18n="flow_3_d">Hỏi IP qua HTTPS HTTP/2 thẳng tới 9.9.9.9 / 1.1.1.1 — 0% rò rỉ cổng UDP 53.</p>
+          </div>
+          <div class="flow-node">
+            <div class="flow-num">04 / SNI SPLIT</div>
+            <h3 style="margin:0 0 6px;font-size:15px;" data-i18n="flow_4_t">Cắt SNI qua DPI</h3>
+            <p style="margin:0;font-size:13px;color:var(--text-2);" data-i18n="flow_4_d">Đọc trọn ClientHello (cả TLS 1.3 hậu lượng tử) và cắt đôi tên miền SNI qua nhiều gói TCP.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="tbl_h1">Lớp dữ liệu</th>
+              <th data-i18n="tbl_h2">Không dùng bảo vệ</th>
+              <th data-i18n="tbl_h3">Dùng NologGuard (NoLogX.com)</th>
+              <th data-i18n="tbl_h4">Dùng VPN / VPS riêng</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong data-i18n="tbl_r1_k">Truy vấn DNS (Tên miền)</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r1_1">Nhà mạng đọc hết (UDP 53)</td>
+              <td class="tag-ok" data-i18n="tbl_r1_2">Ẩn hoàn toàn (DoH HTTP/2 thẳng IP)</td>
+              <td class="tag-ok" data-i18n="tbl_r1_3">Ẩn hoàn toàn</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r2_k">Tên miền HTTPS (SNI trước DPI thụ động)</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r2_1">Hiện chữ thường ở gói 1</td>
+              <td class="tag-ok" data-i18n="tbl_r2_2">Cắt nhỏ qua nhiều gói TCP (vượt DPI thụ động ISP)</td>
+              <td class="tag-ok" data-i18n="tbl_r2_3">Ẩn hoàn toàn</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r3_k">QUIC (UDP 443)</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r3_1">Lộ tên miền ở gói UDP đầu</td>
+              <td class="tag-ok" data-i18n="tbl_r3_2">Trình duyệt tự bỏ QUIC (+ tùy chọn Firewall UDP 443)</td>
+              <td class="tag-ok" data-i18n="tbl_r3_3">Ẩn hoàn toàn</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r4_k">Quảng cáo / Tracker bên thứ 3</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r4_1">Tải &amp; theo dõi tự do</td>
+              <td class="tag-ok" data-i18n="tbl_r4_2">Chặn ngay tầng Proxy/DNS (hostsVN, HaGeZi, Custom URL)</td>
+              <td data-i18n="tbl_r4_3">Tùy nhà cung cấp VPN</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r5_k">Quảng cáo cùng tên miền (vd YouTube)</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r5_1">Hiện quảng cáo</td>
+              <td class="tag-warn" data-i18n="tbl_r5_2">Chưa chặn được (khuyên dùng kèm uBlock Origin)</td>
+              <td data-i18n="tbl_r5_3">Không chặn</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r6_k">Địa chỉ IP máy chủ đích</strong></td>
+              <td class="tag-bad" data-i18n="tbl_r6_1">Nhà mạng thấy</td>
+              <td class="tag-warn" data-i18n="tbl_r6_2">Vẫn thấy IP đích (web sau Cloudflare dùng chung IP khó phân biệt)</td>
+              <td class="tag-ok" data-i18n="tbl_r6_3">Ẩn hoàn toàn (chỉ thấy IP VPN)</td>
+            </tr>
+            <tr>
+              <td><strong data-i18n="tbl_r7_k">Tốc độ &amp; IP thật</strong></td>
+              <td data-i18n="tbl_r7_1">Nguyên gốc</td>
+              <td class="tag-ok" data-i18n="tbl_r7_2">Giữ 100% tốc độ &amp; IP thật (không dính CAPTCHA VPN)</td>
+              <td data-i18n="tbl_r7_3">Chậm hơn, đổi IP</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALL FEATURES -->
+  <section id="features">
+    <div class="container">
+      <div class="sec-head">
+        <span class="sec-tag" data-i18n="feat_tag">Tính năng toàn diện</span>
+        <h2 data-i18n="feat_title">Mọi thứ bạn cần để lướt web sạch, nhanh và riêng tư hơn</h2>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="icon-box green">🛡</div>
+          <h3 data-i18n="f1_t">1-Click Shield &amp; Tự bảo vệ khi mở</h3>
+          <p data-i18n="f1_d">Bật tức thì Local Proxy, làm mới WinINet không cần tắt trình duyệt. Hỗ trợ tự kích hoạt ngay khi mở NologGuard hoặc chạy cùng Windows (--minimized).</p>
+        </div>
+        <div class="card">
+          <div class="icon-box">⚡</div>
+          <h3 data-i18n="f2_t">Bootstrapped DoH + Tự kiểm tra</h3>
+          <p data-i18n="f2_d">Sẵn Quad9, Cloudflare, Google, AdGuard hoặc URL tùy chỉnh. Nút Tự kiểm tra đo độ trễ DoH và thử Loopback xác nhận AdBlock trả mã 403.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box">✂</div>
+          <h3 data-i18n="f3_t">Cắt SNI thông minh &amp; TLS 1.3 PQ</h3>
+          <p data-i18n="f3_d">3 chế độ (Smart SNI Middle Split, Fixed Chunks, DoH Only). Đọc trọn gói ClientHello lớn &gt;1.700 byte với khóa hậu lượng tử X25519MLKEM768.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box green">🚫</div>
+          <h3 data-i18n="f4_t">Chặn quảng cáo không giải mã HTTPS</h3>
+          <p data-i18n="f4_d">Sẵn Built-in Starter offline, hostsVN (Việt Nam), HaGeZi, OISD, StevenBlack, Custom Filter URL và quy tắc @@ cho mọi trình duyệt &amp; app Windows.</p>
+        </div>
+        <div class="card">
+          <div class="icon-box">🪶</div>
+          <h3 data-i18n="f5_t">Siêu nhẹ RAM &amp; Tạm dừng Tray</h3>
+          <p data-i18n="f5_d">Thu xuống khay hệ thống tự giải phóng RAM về ~1–16 MB Working Set. Chuột phải icon tray để Tạm dừng Chặn QC (5p) hoặc Bảo vệ (15p).</p>
+        </div>
+        <div class="card">
+          <div class="icon-box">🔒</div>
+          <h3 data-i18n="f6_t">Không lưu log &amp; Chống kẹt mạng</h3>
+          <p data-i18n="f6_d">Nhật ký chỉ nằm tạm trên RAM. Tự sao lưu Proxy/DNS trước khi chạy và hoàn nguyên sạch khi tắt, thoát, hoặc chạy --recover sau cúp điện.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3 style="margin-bottom:6px;" data-i18n="lang_box_t">Hỗ trợ sẵn 32 ngôn ngữ (tự nhận diện Windows &amp; hỗ trợ bố cục RTL)</h3>
+        <p style="font-size:13.5px;color:var(--text-2);margin:0;" data-i18n="lang_box_d">Giao diện tự chuyển đúng chiều phải-sang-trái cho tiếng Ả Rập, Ba Tư và Do Thái:</p>
+        <div class="lang-wrap">
+          <span class="lang-chip">Tiếng Việt</span><span class="lang-chip">English</span><span class="lang-chip">简体中文</span><span class="lang-chip">繁體中文</span>
+          <span class="lang-chip">日本語</span><span class="lang-chip">한국어</span><span class="lang-chip">Русский</span><span class="lang-chip">Українська</span>
+          <span class="lang-chip">Türkçe</span><span class="lang-chip">العربية</span><span class="lang-chip">فارسی</span><span class="lang-chip">עברית</span>
+          <span class="lang-chip">Bahasa Indonesia</span><span class="lang-chip">Bahasa Melayu</span><span class="lang-chip">ภาษาไทย</span><span class="lang-chip">বাংলা</span>
+          <span class="lang-chip">हिन्दी</span><span class="lang-chip">Español</span><span class="lang-chip">Português</span><span class="lang-chip">Français</span>
+          <span class="lang-chip">Deutsch</span><span class="lang-chip">Italiano</span><span class="lang-chip">Nederlands</span><span class="lang-chip">Polski</span>
+          <span class="lang-chip">Čeština</span><span class="lang-chip">Română</span><span class="lang-chip">Magyar</span><span class="lang-chip">Ελληνικά</span>
+          <span class="lang-chip">Svenska</span><span class="lang-chip">Norsk</span><span class="lang-chip">Dansk</span><span class="lang-chip">Suomi</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USER GUIDE -->
+  <section id="guide">
+    <div class="container">
+      <div class="sec-head">
+        <span class="sec-tag" data-i18n="guide_tag">Hướng dẫn sử dụng</span>
+        <h2 data-i18n="guide_title">Bắt đầu trong 30 giây — Không cần cấu hình phức tạp</h2>
+      </div>
+
+      <div class="grid-2">
+        <div class="card guide-step">
+          <div class="step-badge">1</div>
+          <div>
+            <h3 data-i18n="g1_t">Tải &amp; Mở NologGuard</h3>
+            <p data-i18n="g1_d">Cài bằng <span class="code-inline">NologGuard-Setup.exe</span> (cài im lặng bằng <span class="code-inline">/VERYSILENT</span>) hoặc chạy thẳng 1 file <span class="code-inline">NologGuard.exe</span> dưới quyền USER bình thường.</p>
+          </div>
+        </div>
+        <div class="card guide-step">
+          <div class="step-badge">2</div>
+          <div>
+            <h3 data-i18n="g2_t">Bật khiên &amp; Tự kiểm tra</h3>
+            <p data-i18n="g2_d">Bấm <strong>BẬT BẢO VỆ</strong> ở tab Bảo vệ. Bấm <strong>Tự kiểm tra</strong> ngay cạnh mục DoH để xác nhận DoH và AdBlock <span class="code-inline">403 Loopback OK</span>.</p>
+          </div>
+        </div>
+        <div class="card guide-step">
+          <div class="step-badge">3</div>
+          <div>
+            <h3 data-i18n="g3_t">Tăng cường chặn quảng cáo Việt Nam</h3>
+            <p data-i18n="g3_d">Vào tab <strong>Chặn QC</strong> -> chọn <strong>hostsVN</strong> (hoặc dán Link bộ lọc tùy chỉnh) -> bấm <strong>Tải / Cập nhật</strong>. Dùng <span class="code-inline">@@domain.com</span> để mở ngoại lệ nhanh.</p>
+          </div>
+        </div>
+        <div class="card guide-step">
+          <div class="step-badge">4</div>
+          <div>
+            <h3 data-i18n="g4_t">Tùy chọn Admin &amp; Khôi phục sự cố</h3>
+            <p data-i18n="g4_d">Chỉ cần bấm <strong>Chạy quyền Admin</strong> nếu muốn bật DoH toàn Windows 11 hoặc Firewall chặn UDP 443. Nếu cúp điện kẹt Proxy, chạy <span class="code-inline">NologGuard.exe --recover</span>.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container footer-flex">
+    <div>
+      <strong style="color:var(--text-1);">NologGuard</strong> • <span data-i18n="footer_by">Một dự án mã nguồn mở miễn phí (MIT) tạo bởi</span>
+      <a href="https://nologx.com" target="_blank" rel="noopener" style="color:var(--sky);font-weight:700;">NologX.com ↗</a>
+    </div>
+    <div class="footer-links">
+      <a href="https://nologx.com" target="_blank" rel="noopener">NoLogX.com</a>
+      <a href="https://github.com/NologX-com/NologGuard" target="_blank" rel="noopener">GitHub Repo</a>
+      <a href="https://github.com/NologX-com/NologGuard/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/NologX-com/NologGuard/blob/main/PRIVACY.md" target="_blank" rel="noopener" data-i18n="footer_priv">Chính sách riêng tư</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function() {
+  var dict = {
+    vi: {
+      created_by: "tạo bởi NologX.com ↗",
+      nav_why: "Tại sao nên dùng?",
+      nav_isp: "Giấu web khỏi ISP",
+      nav_features: "Tính năng",
+      nav_guide: "Hướng dẫn",
+      hero_badge: "Mã nguồn mở MIT • Không Driver Kernel • 32 Ngôn ngữ",
+      hero_title: "Lá chắn riêng tư 1-Click cho Windows — Giữ nguyên IP thật & tốc độ gốc",
+      hero_sub: "NologGuard gộp <strong>DoH HTTP/2 mã hóa DNS</strong>, <strong>cắt gói TLS SNI để giấu tên miền truy cập khỏi DPI nhà mạng (ISP)</strong>, <strong>tắt rò rỉ QUIC</strong> và <strong>chặn quảng cáo/tracker</strong> trong một ứng dụng siêu nhẹ — không cần quyền Admin khi dùng hằng ngày.",
+      cta_setup: "Tải Bộ Cài Windows (.exe)",
+      cta_portable: "Bản Portable 1 File (~358 KB)",
+      pill_nolog: "0% ghi đĩa",
+      pill_ram: "~1–16 MB chạy nền",
+      pill_ab: "hostsVN + Custom URL",
+      mock_sub: "DoH + Cắt SNI + Chặn QC/Tracking • Giữ nguyên IP thật",
+      tab_shield: "Bảo vệ", tab_ab: "Chặn QC", tab_check: "Tự kiểm tra", tab_tray: "Khay hệ thống",
+      mock_protected: "● ĐANG BẢO VỆ", mock_disabled: "● CHƯA BẬT BẢO VỆ",
+      mock_enable: "BẬT BẢO VỆ", mock_disable: "TẮT BẢO VỆ",
+      mock_sni_mode: "Cắt giữa tên miền SNI", mock_ab_on: "Đang bật (hostsVN / Starter)",
+      stat_blocked: "QC chặn", stat_bypass: "Ngoại lệ",
+      mock_ab_desc: "Chặn thẳng tại tầng Proxy (HTTP 403) trước khi phân giải DNS. Hỗ trợ thêm quy tắc riêng & ngoại lệ @@.",
+      mock_diag_title: "Kết quả 1-Click Self-Check:",
+      mock_diag_desc: "Kiểm tra đồng thời kết nối DoH HTTP/2 và thử kết nối Loopback xác nhận bộ lọc quảng cáo đang trả mã 403 chuẩn xác.",
+      mock_tray_title: "Thu gọn Tray & Tạm dừng nhanh",
+      mock_tray_1: "Bấm ✕: tự dọn GC + Working Set xuống ~1–16 MB RAM",
+      mock_tray_2: "Tạm dừng Chặn QC (5 phút) -> tự động bật lại",
+      mock_tray_3: "Tạm dừng Bảo vệ (15 phút) -> tự phục hồi Proxy",
+      why_tag: "Tại sao phải dùng NologGuard?",
+      why_title: "Vượt rào cản ISP & bảo mật DNS mà không phải hy sinh tốc độ hay IP thật",
+      why_desc: "So sánh nhanh giữa lướt web mặc định, VPN truyền thống, các tool dòng lệnh phức tạp và NologGuard.",
+      why_1_t: "Mặc định (Không bảo vệ)",
+      why_1_d: "Nhà mạng đọc hết tên miền qua DNS UDP 53, TLS SNI và QUIC. Dễ bị chặn web, theo dõi lịch sử truy cập và ngập tracker quảng cáo.",
+      why_2_t: "VPN truyền thống",
+      why_2_d: "Làm chậm băng thông, tăng ping khi chơi game/họp online, đổi IP nước ngoài khiến app ngân hàng, ví điện tử và CAPTCHA báo lỗi liên tục.",
+      why_3_t: "Tool rời / Script thủ công",
+      why_3_d: "Phải sửa Registry DoH, chạy file .cmd quyền Admin, cài driver kernel dễ đụng Anti-cheat game hoặc mất mạng nếu quên tắt.",
+      why_4_t: "NologGuard (NoLogX.com)",
+      why_4_d: "1 nút bấm gọn sạch: không driver kernel, không cần Admin hằng ngày, giữ 100% IP thật & tốc độ, tự khôi phục mạng an toàn.",
+      isp_tag: "Bảo vệ trước nhà mạng (ISP)",
+      isp_title: "Cách NologGuard giấu tên miền web truy cập khỏi hệ thống lọc ISP",
+      isp_desc: "Ngay cả khi dùng HTTPS, gói tin kết nối đầu tiên vẫn lộ tên miền ở 3 nơi (DNS, TLS SNI và QUIC). NologGuard xử lý đồng thời cả 3 tầng.",
+      flow_1_t: "Trình duyệt / App",
+      flow_1_d: "Gửi HTTP CONNECT vào 127.0.0.1:8899 — trình duyệt tự bỏ QUIC UDP 443.",
+      flow_2_t: "Lọc tên miền QC",
+      flow_2_d: "Trùng danh sách chặn sẽ trả 403 ngay lập tức trước khi hỏi DNS hay mở TCP.",
+      flow_3_t: "Giấu DNS khỏi ISP",
+      flow_3_d: "Hỏi IP qua HTTPS HTTP/2 thẳng tới 9.9.9.9 / 1.1.1.1 — 0% rò rỉ cổng UDP 53.",
+      flow_4_t: "Cắt SNI qua DPI",
+      flow_4_d: "Đọc trọn ClientHello (cả TLS 1.3 hậu lượng tử) và cắt đôi tên miền SNI qua nhiều gói TCP.",
+      tbl_h1: "Lớp dữ liệu", tbl_h2: "Không dùng bảo vệ", tbl_h3: "Dùng NologGuard (NoLogX.com)", tbl_h4: "Dùng VPN / VPS riêng",
+      tbl_r1_k: "Truy vấn DNS (Tên miền)", tbl_r1_1: "Nhà mạng đọc hết (UDP 53)", tbl_r1_2: "Ẩn hoàn toàn (DoH HTTP/2 thẳng IP)", tbl_r1_3: "Ẩn hoàn toàn",
+      tbl_r2_k: "Tên miền HTTPS (SNI trước DPI thụ động)", tbl_r2_1: "Hiện chữ thường ở gói 1", tbl_r2_2: "Cắt nhỏ qua nhiều gói TCP (vượt DPI thụ động ISP)", tbl_r2_3: "Ẩn hoàn toàn",
+      tbl_r3_k: "QUIC (UDP 443)", tbl_r3_1: "Lộ tên miền ở gói UDP đầu", tbl_r3_2: "Trình duyệt tự bỏ QUIC (+ tùy chọn Firewall UDP 443)", tbl_r3_3: "Ẩn hoàn toàn",
+      tbl_r4_k: "Quảng cáo / Tracker bên thứ 3", tbl_r4_1: "Tải & theo dõi tự do", tbl_r4_2: "Chặn ngay tầng Proxy/DNS (hostsVN, HaGeZi, Custom URL)", tbl_r4_3: "Tùy nhà cung cấp VPN",
+      tbl_r5_k: "Quảng cáo cùng tên miền (vd YouTube)", tbl_r5_1: "Hiện quảng cáo", tbl_r5_2: "Chưa chặn được (khuyên dùng kèm uBlock Origin)", tbl_r5_3: "Không chặn",
+      tbl_r6_k: "Địa chỉ IP máy chủ đích", tbl_r6_1: "Nhà mạng thấy", tbl_r6_2: "Vẫn thấy IP đích (web sau Cloudflare dùng chung IP khó phân biệt)", tbl_r6_3: "Ẩn hoàn toàn (chỉ thấy IP VPN)",
+      tbl_r7_k: "Tốc độ & IP thật", tbl_r7_1: "Nguyên gốc", tbl_r7_2: "Giữ 100% tốc độ & IP thật (không dính CAPTCHA VPN)", tbl_r7_3: "Chậm hơn, đổi IP",
+      feat_tag: "Tính năng toàn diện",
+      feat_title: "Mọi thứ bạn cần để lướt web sạch, nhanh và riêng tư hơn",
+      f1_t: "1-Click Shield & Tự bảo vệ khi mở", f1_d: "Bật tức thì Local Proxy, làm mới WinINet không cần tắt trình duyệt. Hỗ trợ tự kích hoạt ngay khi mở NologGuard hoặc chạy cùng Windows (--minimized).",
+      f2_t: "Bootstrapped DoH + Tự kiểm tra", f2_d: "Sẵn Quad9, Cloudflare, Google, AdGuard hoặc URL tùy chỉnh. Nút Tự kiểm tra đo độ trễ DoH và thử Loopback xác nhận AdBlock trả mã 403.",
+      f3_t: "Cắt SNI thông minh & TLS 1.3 PQ", f3_d: "3 chế độ (Smart SNI Middle Split, Fixed Chunks, DoH Only). Đọc trọn gói ClientHello lớn >1.700 byte với khóa hậu lượng tử X25519MLKEM768.",
+      f4_t: "Chặn quảng cáo không giải mã HTTPS", f4_d: "Sẵn Built-in Starter offline, hostsVN (Việt Nam), HaGeZi, OISD, StevenBlack, Custom Filter URL và quy tắc @@ cho mọi trình duyệt & app Windows.",
+      f5_t: "Siêu nhẹ RAM & Tạm dừng Tray", f5_d: "Thu xuống khay hệ thống tự giải phóng RAM về ~1–16 MB Working Set. Chuột phải icon tray để Tạm dừng Chặn QC (5p) hoặc Bảo vệ (15p).",
+      f6_t: "Không lưu log & Chống kẹt mạng", f6_d: "Nhật ký chỉ nằm tạm trên RAM. Tự sao lưu Proxy/DNS trước khi chạy và hoàn nguyên sạch khi tắt, thoát, hoặc chạy --recover sau cúp điện.",
+      lang_box_t: "Hỗ trợ sẵn 32 ngôn ngữ (tự nhận diện Windows & hỗ trợ bố cục RTL)",
+      lang_box_d: "Giao diện tự chuyển đúng chiều phải-sang-trái cho tiếng Ả Rập, Ba Tư và Do Thái:",
+      guide_tag: "Hướng dẫn sử dụng",
+      guide_title: "Bắt đầu trong 30 giây — Không cần cấu hình phức tạp",
+      g1_t: "Tải & Mở NologGuard", g1_d: "Cài bằng <code>NologGuard-Setup.exe</code> (cài im lặng bằng <code>/VERYSILENT</code>) hoặc chạy thẳng 1 file <code>NologGuard.exe</code> dưới quyền USER bình thường.",
+      g2_t: "Bật khiên & Tự kiểm tra", g2_d: "Bấm <strong>BẬT BẢO VỆ</strong> ở tab Bảo vệ. Bấm <strong>Tự kiểm tra</strong> ngay cạnh mục DoH để xác nhận DoH và AdBlock <code>403 Loopback OK</code>.",
+      g3_t: "Tăng cường chặn quảng cáo Việt Nam", g3_d: "Vào tab <strong>Chặn QC</strong> -> chọn <strong>hostsVN</strong> (hoặc dán Link bộ lọc tùy chỉnh) -> bấm <strong>Tải / Cập nhật</strong>. Dùng <code>@@domain.com</code> để mở ngoại lệ nhanh.",
+      g4_t: "Tùy chọn Admin & Khôi phục sự cố", g4_d: "Chỉ cần bấm <strong>Chạy quyền Admin</strong> nếu muốn bật DoH toàn Windows 11 hoặc Firewall chặn UDP 443. Nếu cúp điện kẹt Proxy, chạy <code>NologGuard.exe --recover</code>.",
+      footer_by: "Một dự án mã nguồn mở miễn phí (MIT) tạo bởi",
+      footer_priv: "Chính sách riêng tư"
+    },
+    en: {
+      created_by: "by NologX.com ↗",
+      nav_why: "Why NologGuard?",
+      nav_isp: "Hide Sites from ISP",
+      nav_features: "Features",
+      nav_guide: "User Guide",
+      hero_badge: "Open-Source MIT • Zero Kernel Drivers • 32 Languages",
+      hero_title: "1-Click Windows Privacy Shield — Keep Your Real IP & Native Speed",
+      hero_sub: "NologGuard combines <strong>Bootstrapped HTTP/2 DoH</strong>, <strong>TLS SNI Fragmentation to obscure visited domains from ISP DPI</strong>, <strong>QUIC leak bypass</strong>, and <strong>domain-level AdBlock</strong> in a tiny ~358 KB app — zero Admin needed daily.",
+      cta_setup: "Download Windows Installer (.exe)",
+      cta_portable: "Portable Single-File (~358 KB)",
+      pill_nolog: "Zero disk writes",
+      pill_ram: "~1–16 MB in Tray",
+      pill_ab: "hostsVN + Custom URL",
+      mock_sub: "DoH + SNI Fragmentation + AdBlock • Keeps Real IP",
+      tab_shield: "Shield", tab_ab: "AdBlock", tab_check: "Self-Check", tab_tray: "System Tray",
+      mock_protected: "● PROTECTED", mock_disabled: "● SHIELD DISABLED",
+      mock_enable: "ENABLE SHIELD", mock_disable: "DISABLE SHIELD",
+      mock_sni_mode: "Smart SNI Middle Split", mock_ab_on: "Active (hostsVN / Starter)",
+      stat_blocked: "Ads Blocked", stat_bypass: "Bypassed",
+      mock_ab_desc: "Blocks at the proxy layer (HTTP 403) before DNS lookup without HTTPS MitM decryption. Supports custom & @@ rules.",
+      mock_diag_title: "1-Click Self-Check Output:",
+      mock_diag_desc: "Simultaneously probes live HTTP/2 DoH latency and runs a real loopback request to verify AdBlock returns 403.",
+      mock_tray_title: "Tray RAM Trim & Quick Pause",
+      mock_tray_1: "Close (✕): compacts GC + Working Set down to ~1–16 MB RAM",
+      mock_tray_2: "Pause AdBlock (5 min) -> auto-resumes",
+      mock_tray_3: "Pause Shield (15 min) -> cleanly restores Proxy",
+      why_tag: "Why Use NologGuard?",
+      why_title: "Bypass ISP Domain Filtering & Encrypt DNS Without VPN Slowdowns",
+      why_desc: "Compare unprotected browsing, traditional VPNs, CLI DPI scripts, and NologGuard side by side.",
+      why_1_t: "Unprotected Default",
+      why_1_d: "Your ISP sees every visited domain via plaintext UDP 53 DNS, TLS SNI, and QUIC. Easy to block websites and profile your traffic.",
+      why_2_t: "Traditional VPN",
+      why_2_d: "Adds latency and reduces throughput, changes your IP abroad, and triggers banking lockouts or endless CAPTCHAs.",
+      why_3_t: "CLI Tools / Scripts",
+      why_3_d: "Require manual registry tweaks, Administrator cmd scripts, or kernel drivers that clash with game anti-cheat and antivirus software.",
+      why_4_t: "NologGuard (NoLogX.com)",
+      why_4_d: "True 1-click simplicity: zero drivers, works in standard User mode, keeps your real IP & full speed, crash-safe network recovery.",
+      isp_tag: "ISP Privacy Shield",
+      isp_title: "How NologGuard Hides Accessed Websites from ISP Inspection",
+      isp_desc: "Even on HTTPS sites, three unencrypted signals expose which domain you visit: DNS, TLS SNI, and QUIC. NologGuard protects all three.",
+      flow_1_t: "Browser / App",
+      flow_1_d: "Sends HTTP CONNECT to 127.0.0.1:8899 — browsers automatically drop QUIC UDP 443.",
+      flow_2_t: "Ad / Tracker Filter",
+      flow_2_d: "Matched ad/tracker hosts return HTTP 403 immediately before any DNS lookup or TCP open.",
+      flow_3_t: "Encrypt DNS (DoH)",
+      flow_3_d: "Resolves over Bootstrapped HTTP/2 directly to 9.9.9.9 / 1.1.1.1 — zero UDP 53 leaks.",
+      flow_4_t: "TLS SNI Splitting",
+      flow_4_d: "Buffers full ClientHello (even PQ TLS 1.3) and splits SNI bytes across TCP packets.",
+      tbl_h1: "Traffic Layer", tbl_h2: "Unprotected", tbl_h3: "With NologGuard (NoLogX.com)", tbl_h4: "Full VPN / VPS",
+      tbl_r1_k: "DNS Queries (Domain Name)", tbl_r1_1: "Visible to ISP (UDP 53)", tbl_r1_2: "Hidden (Bootstrapped HTTP/2 DoH)", tbl_r1_3: "Hidden",
+      tbl_r2_k: "HTTPS SNI Hostname (Passive DPI)", tbl_r2_1: "Plaintext in 1st packet", tbl_r2_2: "Split across TCP packets (bypasses passive DPI)", tbl_r2_3: "Hidden",
+      tbl_r3_k: "QUIC (UDP 443)", tbl_r3_1: "Plaintext in QUIC Initial", tbl_r3_2: "Bypassed by proxy (+ optional Firewall UDP 443 block)", tbl_r3_3: "Hidden",
+      tbl_r4_k: "3rd-Party Ads & Trackers", tbl_r4_1: "Loaded & tracked", tbl_r4_2: "Blocked before DNS/TCP (hostsVN, HaGeZi, Custom URL)", tbl_r4_3: "Varies by VPN",
+      tbl_r5_k: "First-Party Video Ads (YouTube)", tbl_r5_1: "Shown", tbl_r5_2: "Not blocked (pair with uBlock Origin)", tbl_r5_3: "Not blocked",
+      tbl_r6_k: "Destination IP Address", tbl_r6_1: "Visible to ISP", tbl_r6_2: "Still visible (shared CDNs like Cloudflare stay ambiguous)", tbl_r6_3: "Hidden (ISP sees VPN IP)",
+      tbl_r7_k: "Speed & Real IP", tbl_r7_1: "Native", tbl_r7_2: "100% native speed & real IP (no VPN CAPTCHAs)", tbl_r7_3: "Slower, IP changes",
+      feat_tag: "Complete Feature Set",
+      feat_title: "Everything Built In for Fast, Private Windows Browsing",
+      f1_t: "1-Click Shield & Auto-Protect", f1_d: "Applies System Proxy & refreshes WinINet immediately. Supports Auto-Protect on launch and silent Windows startup (--minimized).",
+      f2_t: "Bootstrapped DoH + Self-Check", f2_d: "Includes Quad9, Cloudflare, Google, AdGuard & Custom DoH. Self-Check verifies DoH latency and live loopback 403 AdBlock enforcement.",
+      f3_t: "Smart SNI Split & TLS 1.3 PQ", f3_d: "3 modes (Smart SNI Middle Split, Fixed Chunks, DoH Only). Handles >1,700B X25519MLKEM768 post-quantum ClientHello handshakes.",
+      f4_t: "Zero-MitM Domain AdBlock", f4_d: "Built-in Starter (offline), hostsVN, HaGeZi, OISD, StevenBlack, Custom Filter URLs, and @@ allow exceptions across browsers & apps.",
+      f5_t: "Tray Auto-Trim & Quick Pause", f5_d: "Automatically trims RAM down to ~1–16 MB when minimized to Tray. Right-click tray to pause AdBlock (5m) or Shield (15m).",
+      f6_t: "RAM-Only Logs & Crash Recovery", f6_d: "Never writes visited domains to disk. Snapshots Proxy/DNS beforehand and cleanly restores on exit or NologGuard.exe --recover.",
+      lang_box_t: "32 Built-in Languages (Auto-Detect & Full RTL Support)",
+      lang_box_d: "Automatically mirrors Right-to-Left layout cleanly for Arabic, Persian, and Hebrew:",
+      guide_tag: "Quick User Guide",
+      guide_title: "Up & Running in 30 Seconds — Zero Complex Setup",
+      g1_t: "Download & Launch", g1_d: "Run <code>NologGuard-Setup.exe</code> (silent install: <code>/VERYSILENT</code>) or launch single-file portable <code>NologGuard.exe</code> as a normal user.",
+      g2_t: "Enable & Self-Check", g2_d: "Click <strong>ENABLE SHIELD</strong> on the Shield tab, then click <strong>Self-Check</strong> to verify live DoH latency and <code>403 Loopback OK</code>.",
+      g3_t: "Upgrade AdBlock Filters", g3_d: "Open the <strong>AdBlock</strong> tab -> pick <strong>hostsVN</strong> / <strong>HaGeZi</strong> or paste a Custom Filter URL -> click <strong>Update List</strong>.",
+      g4_t: "Optional Admin & Recovery", g4_d: "Only click <strong>Relaunch as Admin</strong> for Windows 11 System DoH or UDP 443 Firewall blocking. Run <code>NologGuard.exe --recover</code> anytime to reset proxy.",
+      footer_by: "A free MIT open-source project created by",
+      footer_priv: "Privacy Policy"
+    }
+  };
+
+  var curLang = "vi";
+  function applyLang(lang) {
+    curLang = lang;
+    document.documentElement.lang = lang;
+    document.getElementById("langCodeLabel").textContent = lang.toUpperCase();
+    var map = dict[lang];
+    var nodes = document.querySelectorAll("[data-i18n]");
+    for (var i = 0; i < nodes.length; i++) {
+      var k = nodes[i].getAttribute("data-i18n");
+      if (map[k]) nodes[i].innerHTML = map[k];
+    }
+  }
+  document.getElementById("langToggle").addEventListener("click", function() {
+    applyLang(curLang === "vi" ? "en" : "vi");
+  });
+
+  // Mockup interactive tabs & shield toggle
+  var mockTabs = document.querySelectorAll("[data-mocktab]");
+  for (var i = 0; i < mockTabs.length; i++) {
+    mockTabs[i].addEventListener("click", function() {
+      for (var j = 0; j < mockTabs.length; j++) mockTabs[j].classList.remove("active");
+      this.classList.add("active");
+      var target = this.getAttribute("data-mocktab");
+      var panes = ["shield", "adblock", "check", "tray"];
+      for (var p = 0; p < panes.length; p++) {
+        document.getElementById("mock-pane-" + panes[p]).style.display = (panes[p] === target) ? "block" : "none";
+      }
+    });
+  }
+  var mockOn = true;
+  document.getElementById("mockToggleBtn").addEventListener("click", function() {
+    mockOn = !mockOn;
+    var badge = document.getElementById("mock-badge");
+    var btnTxt = document.getElementById("mockBtnText");
+    var btn = this;
+    var map = dict[curLang];
+    if (mockOn) {
+      btn.classList.remove("off");
+      badge.style.color = "#10b981";
+      badge.textContent = map.mock_protected;
+      btnTxt.textContent = map.mock_disable;
+    } else {
+      btn.classList.add("off");
+      badge.style.color = "#94a3b8";
+      badge.textContent = map.mock_disabled;
+      btnTxt.textContent = map.mock_enable;
+    }
+  });
+
+  // Auto-fetch latest GitHub release download links silently if available
+  fetch("https://api.github.com/repos/NologX-com/NologGuard/releases/latest")
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data || !data.tag_name) return;
+      document.getElementById("nav-ver").textContent = data.tag_name;
+      document.getElementById("mock-ver").textContent = data.tag_name;
+      if (Array.isArray(data.assets)) {
+        for (var i = 0; i < data.assets.length; i++) {
+          var a = data.assets[i];
+          if (a.name === "NologGuard-Setup.exe") document.getElementById("dl-setup").href = a.browser_download_url;
+          if (a.name === "NologGuard.exe") document.getElementById("dl-portable").href = a.browser_download_url;
+        }
+      }
+    })
+    .catch(function() {});
+})();
+</script>
+</body>
+</html>
