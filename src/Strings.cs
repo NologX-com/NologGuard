@@ -17,7 +17,7 @@ namespace NologGuard
     }
 
     /// <summary>
-    /// Multi-language UI localization table supporting 18 languages with English fallback.
+    /// Multi-language UI localization table supporting 32 languages with English fallback.
     /// </summary>
     public static class Strings
     {
@@ -32,15 +32,29 @@ namespace NologGuard
             new LanguageInfo("ru", "Русский"),
             new LanguageInfo("uk", "Українська"),
             new LanguageInfo("tr", "Türkçe"),
+            new LanguageInfo("ar", "العربية"),
+            new LanguageInfo("fa", "فارسی"),
+            new LanguageInfo("he", "עברית"),
             new LanguageInfo("id", "Bahasa Indonesia"),
+            new LanguageInfo("ms", "Bahasa Melayu"),
             new LanguageInfo("th", "ภาษาไทย"),
+            new LanguageInfo("bn", "বাংলা"),
+            new LanguageInfo("hi", "हिन्दी"),
             new LanguageInfo("es", "Español"),
             new LanguageInfo("pt", "Português"),
             new LanguageInfo("fr", "Français"),
             new LanguageInfo("de", "Deutsch"),
             new LanguageInfo("it", "Italiano"),
+            new LanguageInfo("nl", "Nederlands"),
             new LanguageInfo("pl", "Polski"),
-            new LanguageInfo("hi", "हिन्दी")
+            new LanguageInfo("cs", "Čeština"),
+            new LanguageInfo("ro", "Română"),
+            new LanguageInfo("hu", "Magyar"),
+            new LanguageInfo("el", "Ελληνικά"),
+            new LanguageInfo("sv", "Svenska"),
+            new LanguageInfo("nb", "Norsk"),
+            new LanguageInfo("da", "Dansk"),
+            new LanguageInfo("fi", "Suomi")
         };
 
         private static readonly Dictionary<string, Dictionary<string, string>> Catalog = BuildCatalog();
@@ -49,6 +63,19 @@ namespace NologGuard
         {
             if (string.IsNullOrEmpty(code)) return false;
             return Catalog.ContainsKey(code);
+        }
+
+        public static bool IsRightToLeft(string code)
+        {
+            return string.Equals(code, "ar", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(code, "fa", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(code, "he", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool HasKey(string lang, string key)
+        {
+            Dictionary<string, string> dict;
+            return !string.IsNullOrEmpty(lang) && Catalog.TryGetValue(lang, out dict) && dict.ContainsKey(key);
         }
 
         public static string ResolveSystemLanguage()
@@ -68,10 +95,13 @@ namespace NologGuard
                 {
                     return "zh";
                 }
-                string two = ci.TwoLetterISOLanguageName ?? string.Empty;
+                string two = (ci.TwoLetterISOLanguageName ?? string.Empty).ToLowerInvariant();
+                if (two == "no" || two == "nn") return "nb";
+                if (two == "iw") return "he";
+                if (two == "in") return "id";
                 if (IsSupported(two))
                 {
-                    return two.ToLowerInvariant();
+                    return two;
                 }
             }
             catch
@@ -852,26 +882,609 @@ namespace NologGuard
                 "Windows प्रॉक्सी, DNS और फ़ायरवॉल सफलतापूर्वक बहाल हुए।"
             );
 
+            // 19. Arabic (العربية)
+            cat["ar"] = Pack(
+                "DoH + تقطيع SNI + حظر الإعلانات • يحتفظ بـ IP الحقيقي",
+                "الحماية", "الإعلانات", "الاستثناءات", "الإعدادات", "السجل",
+                "الحماية متوقفة", "محمي", "تفعيل الحماية", "إيقاف الحماية",
+                "نقرة واحدة لتفعيل وكيل DoH المحلي + تقطيع SNI + تجاوز QUIC.",
+                "مزوّد DoH:", "وضع تقطيع SNI:", "فحص ذاتي",
+                "تعيين وكيل نظام Windows تلقائياً (مستحسن)",
+                "تفعيل مانع الإعلانات والمتتبعات (حماية النطاقات)",
+                "تطبيق DoH على مستوى Windows 11 (يتطلب مسؤول)",
+                "حظر QUIC UDP 443 عبر الجدار الناري (يتطلب مسؤول)",
+                "إعادة التشغيل كمسؤول", "مسؤول", "مستخدم",
+                "تقطيع ذكي في منتصف SNI (مستحسن)", "أجزاء صغيرة ثابتة", "إيقاف (وكيل DoH فقط)",
+                "تقطيع SNI", "إعلانات محظورة", "DoH (مخبأ)", "مستثنى",
+                "توضيح: يحتفظ بعنوان IP الحقيقي، يشفر DNS، يقطع SNI، ويحظر نطاقات الإعلانات والتتبع الخارجية (لا يزيل إعلانات الفيديو داخل نفس النطاق مثل يوتيوب).",
+                "قائمة الفلترة:", "تحديث القائمة", "نشط: {0} نطاق محظور | {1} استثناء @@",
+                "قواعد مخصصة (نطاق في كل سطر؛ أضف @@ للسماح؛ يدعم صيغة hosts و AdBlock):",
+                "تم حفظ وتطبيق قواعد الحظر فوراً.",
+                "يحظر نطاقات الإعلانات والتتبع في طبقة الوكيل قبل DNS دون فك تشفير HTTPS.",
+                "النطاقات والشبكات المستثناة من تقطيع SNI (نطاق بالسطر، يدعم *.example.com و #):",
+                "إضافة", "حفظ التغييرات", "افتراضي", "تم حفظ وتطبيق قائمة الاستثناءات.",
+                "منفذ الوكيل المحلي (1024-65535):", "حجم الجزء الأولي (بايت):", "التأخير بين الأجزاء (مللي ثانية):",
+                "رابط DoH مخصص (https://...):", "لغة الواجهة:",
+                "تصغير إلى شريط المهام عند الإغلاق", "تشغيل تلقائي مع بدء Windows",
+                "عرض النطاقات في السجل (في الذاكرة فقط، لا يُكتب على القرص)",
+                "إعادة ضبط طارئة لوكيل Windows والجدار الناري", "تم حفظ الإعدادات.",
+                "السجلات تبقى في الذاكرة المؤقتة فقط (آخر 300 سطر) ولا تُحفظ على القرص.", "مسح السجل",
+                "فتح NologGuard", "تبديل الحماية", "خروج (إيقاف الحماية)", "NologGuard لا يزال يعمل في شريط النظام.",
+                "صلاحيات المسؤول مطلوبة",
+                "خيارا DoH للنظام وحظر QUIC بالجدار الناري يتطلبان صلاحيات المسؤول. هل تريد إعادة التشغيل كمسؤول الآن؟",
+                "? لماذا تتطلب بعض الخيارات مسؤولاً؟", "لماذا تتطلب بعض الخيارات صلاحيات المسؤول؟",
+                "1. التصفح اليومي لا يحتاج صلاحيات مسؤول:\n" +
+                "   في وضع المستخدم العادي، يعمل وكيل النظام وDoH وتقطيع SNI وحظر الإعلانات لمتصفحات Chrome وEdge وFirefox تلقائياً.\n\n" +
+                "2. خياران اختياريان فقط يطلبان المسؤول (بسبب حماية Windows):\n" +
+                "   • DoH على مستوى Windows 11: تعديل DNS لبطاقات الشبكة ومفاتيح HKLM يتطلب صلاحيات المسؤول.\n" +
+                "   • حظر QUIC UDP 443: إضافة وحذف قواعد جدار الحماية يتطلب صلاحيات المسؤول.\n\n" +
+                "3. آمن وقابل للاسترجاع:\n" +
+                "   يحفظ NologGuard نسخة احتياطية لإعدادات DNS ويعيدها تلقائياً عند الإيقاف أو الخروج.",
+                "تمت استعادة وكيل Windows وDNS والجدار الناري بنجاح."
+            );
+
+            // 20. Persian / Farsi (فارسی)
+            cat["fa"] = Pack(
+                "DoH + قطعه‌بندی SNI + مسدودساز تبلیغات • حفظ IP واقعی",
+                "محافظت", "تبلیغات", "استثناها", "تنظیمات", "گزارش",
+                "محافظت غیرفعال", "محافظت فعال", "فعال‌سازی سپر", "غیرفعال‌سازی سپر",
+                "یک کلیک برای فعال‌سازی پروکسی محلی DoH + قطعه‌بندی SNI + دور زدن QUIC.",
+                "ارائه‌دهنده DoH:", "حالت قطعه‌بندی SNI:", "خودآزمایی",
+                "تنظیم خودکار پروکسی سیستم Windows (پیشنهادی)",
+                "فعال‌سازی مسدودساز تبلیغات و ردیاب‌ها (سپر دامنه)",
+                "اعمال DoH سراسری Windows 11 (نیازمند مدیر)",
+                "مسدودسازی QUIC UDP 443 با فایروال (نیازمند مدیر)",
+                "اجرا با دسترسی مدیر", "مدیر", "کاربر",
+                "تقسیم هوشمند میانه SNI (پیشنهادی)", "قطعات کوچک ثابت", "خاموش (فقط پروکسی DoH)",
+                "تقسیم SNI", "تبلیغ مسدود", "DoH (کش)", "مستثنا",
+                "توضیح شفاف: IP واقعی شما حفظ می‌شود، DNS رمزنگاری و SNI قطعه‌بندی می‌شود و دامنه‌های تبلیغاتی متفرقه مسدود می‌شوند (تبلیغات هم‌دامنه مانند ویدیوهای یوتیوب حذف نمی‌شوند).",
+                "فهرست فیلتر:", "به‌روزرسانی", "فعال: {0} دامنه مسدود | {1} استثنای @@",
+                "قوانین سفارشی (هر خط یک دامنه؛ برای مجاز کردن @@ بگذارید؛ پشتیبانی از hosts و AdBlock):",
+                "قوانین مسدودسازی ذخیره و فوراً اعمال شدند.",
+                "دامنه‌های تبلیغاتی را در لایه پروکسی پیش از DNS بدون رمزگشایی HTTPS مسدود می‌کند.",
+                "دامنه‌ها و شبکه‌های مستثنا از تقسیم SNI (هر خط یک مورد، پشتیبانی از *.example.com و #):",
+                "افزودن", "ذخیره تغییرات", "پیش‌فرض", "فهرست استثناها ذخیره و اعمال شد.",
+                "پورت پروکسی محلی (1024-65535):", "اندازه قطعه اولیه (بایت):", "تأخیر بین قطعات (ms):",
+                "آدرس DoH سفارشی (https://...):", "زبان رابط کاربری:",
+                "کوچک‌سازی به سینی سیستم هنگام بستن", "اجرای خودکار هنگام شروع Windows",
+                "نمایش دامنه‌ها در گزارش زنده (فقط در RAM، بدون ذخیره روی دیسک)",
+                "بازنشانی اضطراری پروکسی و فایروال Windows", "تنظیمات ذخیره شد.",
+                "گزارش‌ها فقط در RAM نگهداری می‌شوند (۳۰۰ خط آخر) و روی دیسک نوشته نمی‌شوند.", "پاک کردن",
+                "باز کردن NologGuard", "تغییر وضعیت سپر", "خروج کامل (غیرفعال‌سازی سپر)", "NologGuard همچنان در پس‌زمینه فعال است.",
+                "نیازمند دسترسی مدیر (Administrator)",
+                "گزینه‌های DoH سراسری و مسدودسازی QUIC فایروال نیازمند دسترسی مدیر هستند. اکنون با دسترسی مدیر راه‌اندازی مجدد شود؟",
+                "? چرا برخی گزینه‌ها مدیر می‌خواهند؟", "چرا برخی گزینه‌ها نیاز به دسترسی مدیر دارند؟",
+                "1. استفاده روزمره مرورگر بدون نیاز به مدیر:\n" +
+                "   در حالت کاربر عادی، پروکسی سیستم (HKCU)، DoH HTTP/2، تقسیم SNI و مسدودساز تبلیغات برای Chrome، Edge و Firefox کامل کار می‌کنند.\n\n" +
+                "2. تنها ۲ گزینه سراسری نیازمند مدیر هستند:\n" +
+                "   • DoH سراسری Windows 11: تغییر DNS کارت شبکه و تنظیمات HKLM فقط با دسترسی مدیر مجاز است.\n" +
+                "   • مسدودسازی QUIC UDP 443: افزودن و حذف قانون فایروال Windows نیازمند مدیر است.\n\n" +
+                "3. ایمن و قابل بازگشت:\n" +
+                "   NologGuard پیش از تغییر، نسخه پشتیبان DNS را ذخیره کرده و هنگام خروج به‌طور خودکار به حالت اول برمی‌گرداند.",
+                "پروکسی، DNS و فایروال Windows با موفقیت بازیابی شدند."
+            );
+
+            // 21. Hebrew (עברית)
+            cat["he"] = Pack(
+                "DoH + פיצול SNI + חסימת פרסומות • שומר על IP אמיתי",
+                "הגנה", "פרסומות", "חריגים", "הגדרות", "יומן",
+                "ההגנה כבויה", "מוגן", "הפעל הגנה", "כבה הגנה",
+                "לחיצה אחת להפעלת פרוקסי DoH מקומי + פיצול SNI + עקיפת QUIC.",
+                "ספק DoH:", "מצב פיצול SNI:", "בדיקה עצמית",
+                "הגדרת פרוקסי מערכת Windows אוטומטית (מומלץ)",
+                "הפעלת חוסם פרסומות ומעקב (הגנת דומיינים)",
+                "החל DoH מערכתי ב-Windows 11 (דורש מנהל)",
+                "חסום QUIC UDP 443 דרך חומת האש (דורש מנהל)",
+                "הפעל כמנהל", "מנהל", "משתמש",
+                "פיצול חכם במרכז SNI (מומלץ)", "חלקים קטנים קבועים", "כבוי (פרוקסי DoH בלבד)",
+                "פיצול SNI", "פרסומות נחסמו", "DoH (מטמון)", "הוחרג",
+                "גילוי נאות: שומר על ה-IP האמיתי, מצפין DNS, מפצל SNI וחוסם דומייני פרסום ומעקב צד-שלישי (אינו מסיר פרסומות וידאו פנימיות כמו יוטיוב).",
+                "רשימת סינון:", "עדכן רשימה", "פעיל: {0} דומיינים חסומים | {1} התרי @@",
+                "כללים מותאמים (דומיין בשורה; הוסף @@ לאישור; תומך hosts ו-AdBlock):",
+                "כללי החסימה נשמרו והוחלו מיד.",
+                "חוסם דומייני פרסום ומעקב בשכבת הפרוקסי לפני שאילתת DNS ללא פענוח HTTPS.",
+                "דומיינים ורשתות הפטורים מפיצול SNI (שורה לפריט, תומך *.example.com והערות #):",
+                "הוסף", "שמור שינויים", "ברירת מחדל", "רשימת החריגים נשמרה והוחלה.",
+                "פורט פרוקסי מקומי (1024-65535):", "גודל חלק ראשוני (בתים):", "השהיה בין חלקים (ms):",
+                "כתובת DoH מותאמת (https://...):", "שפת ממשק:",
+                "מזער למגש המערכת בסגירה", "הפעל אוטומטית עם Windows",
+                "הצג דומיינים ביומן (בזיכרון בלבד, לעולם לא נכתב לדיסק)",
+                "איפוס חירום לפרוקסי וחומת האש של Windows", "ההגדרות נשמרו.",
+                "היומן נשמר בזיכרון בלבד (300 שורות אחרונות) ואינו נשמר בדיסק.", "נקה יומן",
+                "פתח את NologGuard", "הפעל / כבה הגנה", "יציאה מלאה (מכבה הגנה)", "NologGuard עדיין פועל במגש המערכת.",
+                "נדרשות הרשאות מנהל",
+                "DoH מערכתי וחסימת QUIC בחומת האש דורשים הרשאות מנהל. להפעיל מחדש כמנהל כעת?",
+                "? למה חלק מהאפשרויות דורשות מנהל?", "מדוע חלק מהאפשרויות דורשות הרשאות מנהל?",
+                "1. הגנה יומיומית לדפדפנים ללא הרשאות מנהל:\n" +
+                "   במצב משתמש רגיל פועלים פרוקסי המערכת (HKCU), DoH HTTP/2, פיצול SNI וחוסם הפרסומות עבור Chrome, Edge ו-Firefox.\n\n" +
+                "2. רק 2 אפשרויות מערכתיות דורשות הרשאת מנהל:\n" +
+                "   • DoH מערכתי ל-Windows 11: שינוי DNS של כרטיסי הרשת ורישום HKLM.\n" +
+                "   • חסימת QUIC UDP 443: הוספה והסרה של חוקי חומת האש של Windows.\n\n" +
+                "3. בטוח והפיך:\n" +
+                "   NologGuard מגבה את הגדרות ה-DNS ומשחזר אותן אוטומטית בכיבוי או ביציאה.",
+                "פרוקסי Windows, DNS וחומת האש שוחזרו בהצלחה."
+            );
+
+            // 22. Bengali (বাংলা)
+            cat["bn"] = Pack(
+                "DoH + SNI বিভাজন + বিজ্ঞাপন ব্লক • আসল IP বজায় রাখে",
+                "সুরক্ষা", "অ্যাডব্লক", "হোয়াইটলিস্ট", "সেটিংস", "লাইভ লগ",
+                "সুরক্ষা বন্ধ", "সুরক্ষিত", "সুরক্ষা চালু করুন", "সুরক্ষা বন্ধ করুন",
+                "১ ক্লিকে লোকাল DoH প্রক্সি + SNI স্প্লিটিং + QUIC বাইপাস চালু করুন।",
+                "DoH প্রোভাইডার:", "SNI স্প্লিট মোড:", "স্ব-পরীক্ষা",
+                "Windows সিস্টেম প্রক্সি স্বয়ংক্রিয় সেট করুন (প্রস্তাবিত)",
+                "অ্যাডব্লকার ও অ্যান্টি-ট্র্যাকিং চালু করুন (ডোমেইন সুরক্ষা)",
+                "Windows 11 সিস্টেম DoH প্রয়োগ করুন (Admin প্রয়োজন)",
+                "ফায়ারওয়াল দিয়ে QUIC UDP 443 ব্লক করুন (Admin প্রয়োজন)",
+                "Admin হিসেবে পুনরায় চালান", "ADMIN", "USER",
+                "স্মার্ট SNI মাঝখান বিভাজন (প্রস্তাবিত)", "নির্দিষ্ট ছোট অংশ", "বন্ধ (শুধু DoH প্রক্সি)",
+                "SNI-স্প্লিট", "বিজ্ঞাপন ব্লক", "DoH (ক্যাশ)", "বাইপাসড",
+                "সৎ সীমা: আপনার আসল IP থাকে, DNS এনক্রিপ্ট ও SNI বিভক্ত হয় এবং তৃতীয়-পক্ষের বিজ্ঞাপন/ট্র্যাকার ব্লক হয় (YouTube-এর মতো নিজস্ব ভিডিও বিজ্ঞাপন ব্লক করে না)।",
+                "ফিল্টার তালিকা:", "তালিকা আপডেট", "সক্রিয়: {0} ব্লক ডোমেইন | {1} @@ অনুমতি",
+                "কাস্টম নিয়ম (প্রতি লাইনে একটি ডোমেইন; ছাড় দিতে @@ লিখুন; hosts / AdBlock সমর্থিত):",
+                "AdBlock নিয়ম সংরক্ষিত ও সাথে সাথে প্রয়োগ হয়েছে।",
+                "HTTPS ডিক্রিপশন ছাড়াই DNS লুকআপের আগে প্রক্সি স্তরে বিজ্ঞাপন ব্লক করে।",
+                "SNI বিভাজন থেকে বাদ দেওয়া ডোমেইন ও নেটওয়ার্ক (*.example.com ও # মন্তব্য সমর্থিত):",
+                "যোগ করুন", "সংরক্ষণ করুন", "ডিফল্ট", "হোয়াইটলিস্ট সংরক্ষিত ও প্রয়োগ হয়েছে।",
+                "লোকাল প্রক্সি পোর্ট (1024-65535):", "প্রাথমিক অংশের আকার (বাইট):", "অংশের মাঝে বিলম্ব (ms):",
+                "কাস্টম DoH URL (https://...):", "ইন্টারফেসের ভাষা:",
+                "বন্ধ করলে সিস্টেম ট্রেতে ছোট করুন", "Windows স্টার্টআপে স্বয়ংক্রিয় চালু করুন",
+                "লাইভ লগে ডোমেইন দেখান (শুধু RAM-এ, ডিস্কে কখনো লেখা হয় না)",
+                "Windows প্রক্সি ও ফায়ারওয়াল জরুরি রিসেট", "সেটিংস সংরক্ষিত হয়েছে।",
+                "লগ কেবল RAM-এ থাকে (শেষ ৩০০ লাইন) এবং ডিস্কে কখনো সংরক্ষিত হয় না।", "লগ মুছুন",
+                "NologGuard খুলুন", "সুরক্ষা বদলান", "সম্পূর্ণ প্রস্থান (সুরক্ষা বন্ধ)", "NologGuard এখনো সিস্টেম ট্রেতে চলছে।",
+                "অ্যাডমিনিস্ট্রেটর অনুমতি প্রয়োজন",
+                "সিস্টেম-ব্যাপী DoH এবং ফায়ারওয়াল QUIC ব্লকের জন্য অ্যাডমিনিস্ট্রেটর অধিকার প্রয়োজন। এখন Admin হিসেবে পুনরায় চালু করবেন?",
+                "? কিছু অপশনে Admin কেন লাগে?", "কেন কিছু অপশনে অ্যাডমিনিস্ট্রেটর অধিকার লাগে?",
+                "1. সাধারণ ব্রাউজার সুরক্ষার জন্য Admin লাগে না:\n" +
+                "   সাধারণ USER মোডেই সিস্টেম প্রক্সি (HKCU), HTTP/2 DoH, SNI স্প্লিটিং এবং AdBlock চলে।\n\n" +
+                "2. শুধু ২টি সিস্টেম-ব্যাপী অপশনে Windows Admin চায়:\n" +
+                "   • Windows 11 সিস্টেম DoH: নেটওয়ার্ক অ্যাডাপ্টার DNS ও HKLM রেজিস্ট্রি পরিবর্তন।\n" +
+                "   • ফায়ারওয়াল QUIC UDP 443 ব্লক: ফায়ারওয়াল নিয়ম যোগ/মুছে ফেলা।\n\n" +
+                "3. নিরাপদ ও পূর্বাবস্থায় ফেরানো যায়:\n" +
+                "   বন্ধ বা প্রস্থান করলে পুরোনো DNS ও ফায়ারওয়াল স্বয়ংক্রিয়ভাবে পুনরুদ্ধার হয়।",
+                "Windows প্রক্সি, DNS ও ফায়ারওয়াল সফলভাবে পুনরুদ্ধার হয়েছে।"
+            );
+
+            // 23. Malay (Bahasa Melayu)
+            cat["ms"] = Pack(
+                "DoH + Pemecahan SNI + Penyekat Iklan • Kekalkan IP Sebenar",
+                "Perisai", "Sekat Iklan", "Senarai Putih", "Tetapan", "Log Langsung",
+                "PERISAI DIMATIKAN", "DILINDUNGI", "AKTIFKAN PERISAI", "MATIKAN PERISAI",
+                "1-klik untuk aktifkan Proksi DoH tempatan + pemecahan SNI + pintasan QUIC.",
+                "Penyedia DoH:", "Mod Pemecahan SNI:", "Uji Sendiri",
+                "Tetapkan Proksi Sistem Windows automatik (Disyorkan)",
+                "Aktifkan Penyekat Iklan & Anti-Penjejak (Perisai Domain)",
+                "Guna DoH Sistem Windows 11 (Perlu Admin)",
+                "Sekat QUIC UDP 443 melalui Firewall (Perlu Admin)",
+                "Buka semula sebagai Admin", "ADMIN", "USER",
+                "Pecahan Tengah SNI Pintar (Disyorkan)", "Pecahan Kecil Tetap", "Mati (Proksi DoH Sahaja)",
+                "Pecah-SNI", "Iklan Disekat", "DoH (Cache)", "Dipintas",
+                "Skop jujur: Kekalkan IP sebenar, sulitkan DNS, pecahkan SNI dan sekat domain iklan/penjejak pihak ketiga (tidak menyekat iklan video pihak pertama seperti YouTube).",
+                "Senarai Penapis:", "Kemas Kini", "Aktif: {0} domain disekat | {1} pengecualian @@",
+                "Peraturan tersuai (satu baris satu; tambah @@ untuk benarkan; sokong sintaks hosts & AdBlock):",
+                "Peraturan sekatan disimpan dan digunakan serta-merta.",
+                "Menyekat domain iklan/penjejak pada lapisan proksi sebelum carian DNS tanpa penyahsulitan HTTPS.",
+                "Domain & rangkaian dikecualikan daripada pemecahan SNI (*.example.com dan ulasan # disokong):",
+                "Tambah", "Simpan", "Tetapan Asal", "Senarai putih disimpan dan digunakan serta-merta.",
+                "Port Proksi Tempatan (1024-65535):", "Saiz Pecahan Awal (bait):", "Lengah Antara Pecahan (ms):",
+                "URL DoH Tersuai (https://...):", "Bahasa Antara Muka:",
+                "Kecilkan ke dulang sistem bila ditutup", "Lancar automatik semasa Windows bermula",
+                "Papar domain dalam Log Langsung (RAM sahaja, tidak ditulis ke cakera)",
+                "Tetap Semula Kecemasan Proksi & Firewall Windows", "Tetapan disimpan.",
+                "Log hanya disimpan dalam RAM (300 baris terakhir) dan tidak ditulis ke cakera.", "Kosongkan Log",
+                "Buka NologGuard", "Togol Perisai", "Keluar (Matikan Perisai)", "NologGuard masih berjalan di dulang sistem.",
+                "Keizinan Pentadbir Diperlukan",
+                "DoH sistem Windows dan sekatan QUIC Firewall memerlukan hak Pentadbir. Mulakan semula NologGuard sebagai Pentadbir sekarang?",
+                "? Mengapa sesetengah pilihan perlu Admin?", "Mengapa Sesetengah Pilihan Memerlukan Pentadbir?",
+                "1. Perlindungan pelayar harian TIDAK memerlukan hak Admin:\n" +
+                "   Dalam mod USER biasa, Proksi Sistem (HKCU), HTTP/2 DoH, pecahan SNI dan AdBlock sudah berjalan untuk Chrome, Edge dan Firefox.\n\n" +
+                "2. Hanya 2 ciri seluruh sistem memerlukan Admin (dikawal Windows):\n" +
+                "   • DoH Sistem Windows 11: Mengubah DNS penyesuai rangkaian fizikal dan kekunci HKLM.\n" +
+                "   • Sekat QUIC UDP 443 Firewall: Menambah/memadam peraturan Windows Defender Firewall.\n\n" +
+                "3. Selamat & Boleh Dipulihkan:\n" +
+                "   NologGuard menyandar tetapan DNS asal dahulu dan memulihkannya secara automatik apabila dimatikan atau keluar.",
+                "Proksi Windows, DNS dan Firewall berjaya dipulihkan."
+            );
+
+            // 24. Dutch (Nederlands)
+            cat["nl"] = Pack(
+                "DoH + SNI-fragmentatie + AdBlock • Behoudt echt IP",
+                "Schild", "AdBlock", "Uitzonderingen", "Instellingen", "Live Log",
+                "SCHILD UITGESCHAKELD", "BESCHERMD", "SCHILD INSCHAKELEN", "SCHILD UITSCHAKELEN",
+                "1-klik om lokale DoH-proxy + SNI-splitsing + QUIC-omzeiling in te schakelen.",
+                "DoH-provider:", "SNI-splitsmodus:", "Zelftest",
+                "Windows-systeemproxy automatisch instellen (Aanbevolen)",
+                "AdBlocker & Anti-Tracking inschakelen (Domeinschild)",
+                "Windows 11 Systeem-DoH toepassen (Vereist Admin)",
+                "QUIC UDP 443 blokkeren via Firewall (Vereist Admin)",
+                "Herstart als Admin", "ADMIN", "GEBR.",
+                "Slimme SNI-middensplitsing (Aanbevolen)", "Vaste kleine blokken", "Uit (Alleen DoH-proxy)",
+                "SNI-split", "Geblokkeerd", "DoH (Cache)", "Omzeild",
+                "Eerlijke reikwijdte: Behoudt uw echte IP, versleutelt DNS, splitst SNI en blokkeert advertentie-/trackerdomeinen van derden (verwijdert geen YouTube-videoadvertenties).",
+                "Filterlijst:", "Lijst bijwerken", "Actief: {0} geblokkeerde domeinen | {1} @@ uitzonderingen",
+                "Aangepaste regels (één per regel; begin met @@ om toe te staan; ondersteunt hosts & AdBlock):",
+                "AdBlock-regels opgeslagen en direct toegepast.",
+                "Blokkeert advertentie-/trackerdomeinen op proxyniveau vóór DNS-opzoeking zonder HTTPS-ontsleuteling.",
+                "Domeinen & netwerken uitgesloten van SNI-splitsing (ondersteunt *.domein.nl en # opmerkingen):",
+                "Toevoegen", "Opslaan", "Standaard", "Uitzonderingenlijst opgeslagen en direct actief.",
+                "Lokale proxypoort (1024-65535):", "Eerste blokgrootte (bytes):", "Vertraging tussen blokken (ms):",
+                "Aangepaste DoH-URL (https://...):", "Interfacetaal:",
+                "Minimaliseren naar systeemvak bij sluiten", "Automatisch starten met Windows",
+                "Domeinen tonen in Live Log (alleen in RAM, nooit op schijf)",
+                "Noodherstel Windows Proxy & Firewall", "Instellingen opgeslagen.",
+                "Logboeken blijven uitsluitend in het werkgeheugen (laatste 300 regels) en worden nooit opgeslagen.", "Log wissen",
+                "NologGuard openen", "Schild wisselen", "Afsluiten (Schild uit)", "NologGuard blijft actief in het systeemvak.",
+                "Administratorrechten vereist",
+                "Systeembrede Windows DoH en Firewall QUIC-blokkering vereisen Administratorrechten. NologGuard nu als Administrator herstarten?",
+                "? Waarom is soms Admin nodig?", "Waarom vereisen sommige opties Administratorrechten?",
+                "1. Dagelijkse browserbescherming werkt ZONDER Admin:\n" +
+                "   In de normale USER-modus werken Systeemproxy (HKCU), HTTP/2 DoH, SNI-splitsing en AdBlock voor Chrome, Edge en Firefox volledig.\n\n" +
+                "2. Slechts 2 systeembrede opties vereisen Admin:\n" +
+                "   • Windows 11 Systeem-DoH: DNS op netwerkadapters en HKLM-sleutels aanpassen.\n" +
+                "   • Firewall QUIC UDP 443: Firewallregels toevoegen of verwijderen.\n\n" +
+                "3. Veilig & omkeerbaar:\n" +
+                "   NologGuard maakt vooraf een back-up van uw DNS en herstelt alles automatisch bij uitschakelen.",
+                "Windows Proxy, DNS en Firewall zijn netjes hersteld."
+            );
+
+            // 25. Swedish (Svenska)
+            cat["sv"] = Pack(
+                "DoH + SNI-fragmentering + AdBlock • Behåller riktig IP",
+                "Skydd", "AdBlock", "Undantag", "Inställningar", "Live-logg",
+                "SKYDD AVSTÄNGT", "SKYDDAD", "AKTIVERA SKYDD", "STÄNG AV SKYDD",
+                "1-klick för lokal DoH-proxy + SNI-delning + QUIC-förbikoppling.",
+                "DoH-leverantör:", "SNI-delningsläge:", "Självtest",
+                "Ställ in Windows systemproxy automatiskt (Rekommenderas)",
+                "Aktivera AdBlocker & Anti-Tracking (Domänskydd)",
+                "Använd Windows 11 System-DoH (Kräver Admin)",
+                "Blockera QUIC UDP 443 via Brandvägg (Kräver Admin)",
+                "Starta om som Admin", "ADMIN", "ANV.",
+                "Smart SNI-mittdelning (Rekommenderas)", "Fasta små segment", "Av (Endast DoH-proxy)",
+                "SNI-delad", "Blockerade", "DoH (Cache)", "Förbigångna",
+                "Ärlig omfattning: Behåller riktig IP, krypterar DNS, delar SNI och blockerar tredjeparts reklam-/spårardomäner (tar inte bort inbäddade videoannonser som YouTube).",
+                "Filterlista:", "Uppdatera lista", "Aktiv: {0} blockerade domäner | {1} @@ tillåtna",
+                "Egna regler (en per rad; prefix @@ för att tillåta; stöder hosts & AdBlock-syntax):",
+                "AdBlock-regler sparade och aktiverade direkt.",
+                "Blockerar annons-/spårardomäner i proxylagret före DNS utan HTTPS-dekryptering.",
+                "Domäner och nätverk undantagna från SNI-delning (stöder *.example.com och # kommentarer):",
+                "Lägg till", "Spara ändringar", "Standard", "Undantagslista sparad och aktiverad.",
+                "Lokal proxyport (1024-65535):", "Första segmentstorlek (byte):", "Fördröjning mellan segment (ms):",
+                "Anpassad DoH-URL (https://...):", "Gränssnittsspråk:",
+                "Minimera till systemfältet vid stängning", "Starta automatiskt med Windows",
+                "Visa domäner i Live-logg (endast i RAM, skrivs aldrig till disk)",
+                "Nödåterställ Windows Proxy & Brandvägg", "Inställningar sparade.",
+                "Loggar lagras endast i RAM (senaste 300 raderna) och sparas aldrig på disk.", "Rensa logg",
+                "Öppna NologGuard", "Växla skydd", "Avsluta (Stänger skydd)", "NologGuard fortsätter köras i systemfältet.",
+                "Administratörsbehörighet krävs",
+                "Systemomfattande DoH och brandväggsblockering av QUIC kräver administratörsrättigheter. Starta om NologGuard som administratör nu?",
+                "? Varför behövs Admin ibland?", "Varför kräver vissa val administratörsrättigheter?",
+                "1. Dagligt webbläsarskydd kräver INGEN Admin:\n" +
+                "   I normalt användarläge fungerar systemproxy (HKCU), HTTP/2 DoH, SNI-delning och AdBlock för Chrome, Edge och Firefox.\n\n" +
+                "2. Endast 2 systemövergripande funktioner kräver Admin:\n" +
+                "   • Windows 11 System-DoH: Ändra DNS på nätverkskort och i HKLM.\n" +
+                "   • Blockera QUIC UDP 443: Lägga till eller ta bort brandväggsregler.\n\n" +
+                "3. Säkert & återställbart:\n" +
+                "   NologGuard säkerhetskopierar din DNS först och återställer allt automatiskt vid avstängning.",
+                "Windows Proxy, DNS och brandväggsregler återställdes."
+            );
+
+            // 26. Norwegian Bokmål (Norsk)
+            cat["nb"] = Pack(
+                "DoH + SNI-fragmentering + AdBlock • Beholder ekte IP",
+                "Skjold", "AdBlock", "Unntak", "Innstillinger", "Live-logg",
+                "SKJOLD AVSLÅTT", "BESKYTTET", "AKTIVER SKJOLD", "DEAKTIVER SKJOLD",
+                "1-klikk for lokal DoH-proxy + SNI-deling + QUIC-omgåelse.",
+                "DoH-tilbyder:", "SNI-delingsmodus:", "Selvtest",
+                "Sett Windows systemproxy automatisk (Anbefalt)",
+                "Aktiver AdBlocker & Anti-sporing (Domeneskjold)",
+                "Bruk Windows 11 System-DoH (Krever Admin)",
+                "Blokker QUIC UDP 443 via Brannmur (Krever Admin)",
+                "Start på nytt som Admin", "ADMIN", "BRUKER",
+                "Smart SNI-midtdeling (Anbefalt)", "Faste små deler", "Av (Kun DoH-proxy)",
+                "SNI-delt", "Blokkert", "DoH (Cache)", "Forbigått",
+                "Ærlig omfang: Beholder din ekte IP, krypterer DNS, deler SNI og blokkerer tredjeparts annonse-/sporingsdomener (fjerner ikke førsteparts videoannonser som YouTube).",
+                "Filterliste:", "Oppdater liste", "Aktiv: {0} blokkerte domener | {1} @@ unntak",
+                "Egendefinerte regler (én per linje; bruk @@ for å tillate; støtter hosts & AdBlock):",
+                "AdBlock-regler lagret og aktivert umiddelbart.",
+                "Blokkerer annonse-/sporingsdomener i proxylaget før DNS uten HTTPS-dekryptering.",
+                "Domener og nettverk unntatt fra SNI-deling (støtter *.example.com og # kommentarer):",
+                "Legg til", "Lagre endringer", "Standard", "Unntaksliste lagret og aktivert.",
+                "Lokal proxyport (1024-65535):", "Første delstørrelse (byte):", "Forsinkelse mellom deler (ms):",
+                "Egendefinert DoH-URL (https://...):", "Grensesnittspråk:",
+                "Minimer til systemstatusfeltet ved lukking", "Start automatisk med Windows",
+                "Vis domener i Live-logg (kun i RAM, skrives aldri til disk)",
+                "Nødtilbakestill Windows Proxy & Brannmur", "Innstillinger lagret.",
+                "Logger lagres kun i minnet (siste 300 oppføringer) og aldri på disk.", "Tøm logg",
+                "Åpne NologGuard", "Veksle skjold", "Avslutt (Slår av skjold)", "NologGuard kjører fortsatt i systemstatusfeltet.",
+                "Administratorrettigheter kreves",
+                "Systemdekkende DoH og brannmurblokkering av QUIC krever administratorrettigheter. Start NologGuard på nytt som administrator nå?",
+                "? Hvorfor trenger noen valg Admin?", "Hvorfor krever noen valg administratorrettigheter?",
+                "1. Daglig nettleserbeskyttelse trenger IKKE Admin:\n" +
+                "   I vanlig brukermodus virker systemproxy (HKCU), HTTP/2 DoH, SNI-deling og AdBlock for Chrome, Edge og Firefox.\n\n" +
+                "2. Bare 2 systemomfattende funksjoner krever Admin:\n" +
+                "   • Windows 11 System-DoH: Endring av DNS på nettverkskort og i HKLM.\n" +
+                "   • Blokker QUIC UDP 443: Legge til og fjerne brannmurregler.\n\n" +
+                "3. Trygt & reversibelt:\n" +
+                "   NologGuard sikkerhetskopierer gammel DNS først og gjenoppretter automatisk når skjoldet deaktiveres.",
+                "Windows Proxy, DNS og brannmur ble gjenopprettet."
+            );
+
+            // 27. Danish (Dansk)
+            cat["da"] = Pack(
+                "DoH + SNI-opdeling + AdBlock • Beholder ægte IP",
+                "Skjold", "AdBlock", "Undtagelser", "Indstillinger", "Live Log",
+                "SKJOLD DEAKTIVERET", "BESKYTTET", "AKTIVER SKJOLD", "DEAKTIVER SKJOLD",
+                "1-klik for at aktivere lokal DoH-proxy + SNI-opdeling + QUIC-omgåelse.",
+                "DoH-udbyder:", "SNI-opdelingstilstand:", "Selvtest",
+                "Indstil Windows systemproxy automatisk (Anbefalet)",
+                "Aktiver AdBlocker & Anti-Tracking (Domæneskjold)",
+                "Anvend Windows 11 System-DoH (Kræver Admin)",
+                "Bloker QUIC UDP 443 via Firewall (Kræver Admin)",
+                "Genstart som Admin", "ADMIN", "BRUGER",
+                "Smart SNI-midtopdeling (Anbefalet)", "Faste små bidder", "Fra (Kun DoH-proxy)",
+                "SNI-delt", "Blokeret", "DoH (Cache)", "Omgået",
+                "Ærlig rækkevidde: Beholder din ægte IP, krypterer DNS, opdeler SNI og blokerer tredjeparts annonce-/sporingsdomæner (fjerner ikke YouTube-videoannoncer).",
+                "Filterliste:", "Opdater liste", "Aktiv: {0} blokerede domæner | {1} @@ undtagelser",
+                "Brugerdefinerede regler (én pr. linje; brug @@ for at tillade; understøtter hosts & AdBlock):",
+                "AdBlock-regler gemt og aktiveret med det samme.",
+                "Blokerer annonce-/sporingsdomæner i proxylaget før DNS uden HTTPS-dekryptering.",
+                "Domæner & netværk undtaget fra SNI-opdeling (understøtter *.example.com og # kommentarer):",
+                "Tilføj", "Gem ændringer", "Standard", "Undtagelsesliste gemt og aktiveret.",
+                "Lokal proxyport (1024-65535):", "Første blokstørrelse (bytes):", "Forsinkelse mellem bidder (ms):",
+                "Brugerdefineret DoH-URL (https://...):", "Grænsefladesprog:",
+                "Minimer til proceslinjebakken ved lukning", "Start automatisk med Windows",
+                "Vis domæner i Live Log (kun i RAM, gemmes aldrig på disk)",
+                "Nødnulstil Windows Proxy & Firewall", "Indstillinger gemt.",
+                "Logfiler gemmes kun i RAM (sidste 300 linjer) og aldrig på disk.", "Ryd log",
+                "Åbn NologGuard", "Skift skjold", "Afslut (Deaktiverer skjold)", "NologGuard kører stadig i systembakken.",
+                "Administratorrettigheder påkrævet",
+                "Systemomfattende DoH og Firewall QUIC-blokering kræver administratorrettigheder. Genstart NologGuard som administrator nu?",
+                "? Hvorfor kræver nogle valg Admin?", "Hvorfor kræver visse indstillinger administratorrettigheder?",
+                "1. Daglig browserbeskyttelse kræver IKKE Admin:\n" +
+                "   I almindelig brugertilstand virker systemproxy (HKCU), HTTP/2 DoH, SNI-opdeling og AdBlock for Chrome, Edge og Firefox.\n\n" +
+                "2. Kun 2 systemfunktioner kræver Admin:\n" +
+                "   • Windows 11 System-DoH: Ændring af DNS på netværkskort og HKLM.\n" +
+                "   • Bloker QUIC UDP 443: Tilføje og fjerne Windows Firewall-regler.\n\n" +
+                "3. Sikkert & reversibelt:\n" +
+                "   NologGuard tager backup af din DNS først og gendanner automatisk ved stop.",
+                "Windows Proxy, DNS og Firewall blev gendannet."
+            );
+
+            // 28. Finnish (Suomi)
+            cat["fi"] = Pack(
+                "DoH + SNI-pilkkominen + AdBlock • Säilyttää oikean IP:n",
+                "Suoja", "AdBlock", "Poikkeukset", "Asetukset", "Loki",
+                "SUOJA POIS PÄÄLTÄ", "SUOJATTU", "KÄYNNISTÄ SUOJA", "SAMMUTA SUOJA",
+                "1 klikkaus: käynnistä paikallinen DoH-välityspalvelin + SNI-pilkkominen + QUIC-ohitus.",
+                "DoH-palvelu:", "SNI-pilkontatila:", "Itsetesti",
+                "Aseta Windowsin välityspalvelin automaattisesti (Suositus)",
+                "Ota AdBlocker & seurannanesto käyttöön (Verkkotunnussuoja)",
+                "Käytä Windows 11 -järjestelmän DoH:ta (Vaatii Adminin)",
+                "Estä QUIC UDP 443 palomuurilla (Vaatii Adminin)",
+                "Käynnistä ylläpitäjänä", "ADMIN", "KÄYTT.",
+                "Älykäs SNI-keskipilkkominen (Suositus)", "Kiinteät pienet lohkot", "Pois (Vain DoH-välitys)",
+                "SNI-pilkottu", "Estetyt", "DoH (Välimuisti)", "Ohitettu",
+                "Rehellinen rajaus: Säilyttää oikean IP:n, salaa DNS:n, pilkkoo SNI:n ja estää kolmannen osapuolen mainos-/seurantaverkkotunnukset (ei poista YouTuben kaltaisia videomainoksia).",
+                "Suodatinlista:", "Päivitä lista", "Käytössä: {0} estettyä | {1} @@-poikkeusta",
+                "Omat säännöt (yksi per rivi; lisää @@ salliaksesi; tukee hosts- ja AdBlock-muotoa):",
+                "AdBlock-säännöt tallennettu ja otettu käyttöön.",
+                "Estää mainos-/seurantaverkkotunnukset välityspalvelintasolla ennen DNS-hakua ilman HTTPS-purkua.",
+                "SNI-pilkonnasta ohitettavat verkkotunnukset ja verkot (*.example.com ja # kommentit tuettu):",
+                "Lisää", "Tallenna", "Oletukset", "Poikkeuslista tallennettu ja käytössä.",
+                "Paikallinen välitysportti (1024-65535):", "Alkulohkon koko (tavua):", "Viive lohkojen välillä (ms):",
+                "Oma DoH-URL (https://...):", "Käyttöliittymän kieli:",
+                "Pienennä ilmaisinalueelle suljettaessa", "Käynnistä automaattisesti Windowsin kanssa",
+                "Näytä verkkotunnukset lokissa (vain RAM, ei koskaan levylle)",
+                "Windows-välityksen & palomuurin hätäpalautus", "Asetukset tallennettu.",
+                "Lokit pysyvät vain RAM-muistissa (viimeiset 300 riviä) eivätkä tallennu levylle.", "Tyhjennä loki",
+                "Avaa NologGuard", "Vaihda suojaus", "Lopeta (Poistaa suojauksen)", "NologGuard on yhä käynnissä ilmaisinalueella.",
+                "Järjestelmänvalvojan oikeudet vaaditaan",
+                "Järjestelmänlaajuinen DoH ja palomuurin QUIC-esto vaativat järjestelmänvalvojan oikeudet. Käynnistetäänkö uudelleen järjestelmänvalvojana?",
+                "? Miksi osa valinnoista vaatii Adminin?", "Miksi jotkin asetukset vaativat järjestelmänvalvojan oikeudet?",
+                "1. Päivittäinen selainsuojaus EI vaadi Admin-oikeuksia:\n" +
+                "   Normaalissa USER-tilassa toimivat järjestelmän välityspalvelin (HKCU), HTTP/2 DoH, SNI-pilkkominen ja AdBlock.\n\n" +
+                "2. Vain 2 järjestelmätason asetusta vaatii Adminin:\n" +
+                "   • Windows 11 DoH: verkkosovittimen DNS:n ja HKLM-avainten muokkaus.\n" +
+                "   • Palomuuri QUIC UDP 443: Windows Defender -palomuurisäännön hallinta.\n\n" +
+                "3. Turvallinen ja palautuva:\n" +
+                "   NologGuard varmuuskopioi alkuperäisen DNS:n ja palauttaa kaiken automaattisesti suljettaessa.",
+                "Windowsin välityspalvelin, DNS ja palomuuri palautettu siististi."
+            );
+
+            // 29. Czech (Čeština)
+            cat["cs"] = Pack(
+                "DoH + Rozdělení SNI + AdBlock • Zachovává skutečnou IP",
+                "Štít", "AdBlock", "Výjimky", "Nastavení", "Živý log",
+                "ŠTÍT VYPNUT", "CHRÁNĚNO", "ZAPNOUT ŠTÍT", "VYPNOUT ŠTÍT",
+                "Jedním kliknutím zapnete místní DoH proxy + rozdělení SNI + obejití QUIC.",
+                "Poskytovatel DoH:", "Režim dělení SNI:", "Autotest",
+                "Automaticky nastavit systémové proxy Windows (Doporučeno)",
+                "Zapnout AdBlocker a Anti-Tracking (Ochrana domén)",
+                "Použít systémové DoH Windows 11 (Vyžaduje Admin)",
+                "Blokovat QUIC UDP 443 přes Firewall (Vyžaduje Admin)",
+                "Spustit jako Admin", "ADMIN", "USER",
+                "Chytré rozdělení středu SNI (Doporučeno)", "Pevné malé části", "Vypnuto (Pouze DoH proxy)",
+                "SNI-děleno", "Blokováno", "DoH (Cache)", "Vynecháno",
+                "Upřímný rozsah: Zachovává vaši reálnou IP, šifruje DNS, dělí SNI a blokuje reklamní/sledovací domény třetích stran (neodstraňuje videoreklamy z YouTube).",
+                "Seznam filtrů:", "Aktualizovat", "Aktivní: {0} blokovaných domén | {1} povolení @@",
+                "Vlastní pravidla (jedno na řádek; předpona @@ povolí; podporuje formát hosts i AdBlock):",
+                "Pravidla AdBlocku uložena a okamžitě aktivována.",
+                "Blokuje reklamní/sledovací domény na vrstvě proxy ještě před DNS dotazem bez dešifrování HTTPS.",
+                "Domény a sítě vyňaté z dělení SNI (podporuje *.example.com a komentáře #):",
+                "Přidat", "Uložit změny", "Výchozí", "Seznam výjimek uložen a aktivován.",
+                "Port místního proxy (1024-65535):", "Velikost počáteční části (bajty):", "Prodleva mezi částmi (ms):",
+                "Vlastní DoH URL (https://...):", "Jazyk rozhraní:",
+                "Minimalizovat do oznamovací oblasti při zavření", "Spouštět automaticky se systémem Windows",
+                "Zobrazovat domény v Živém logu (pouze v RAM, nikdy na disk)",
+                "Nouzový reset proxy a firewallu Windows", "Nastavení uloženo.",
+                "Záznamy zůstávají výhradně v RAM (posledních 300 řádků) a nikdy se neukládají na disk.", "Vymazat log",
+                "Otevřít NologGuard", "Přepnout štít", "Ukončit (Vypne štít)", "NologGuard stále běží v oznamovací oblasti.",
+                "Vyžadována práva správce",
+                "Systémové DoH Windows a blokování QUIC firewallem vyžadují práva správce. Restartovat NologGuard jako správce?",
+                "? Proč některé volby vyžadují správce?", "Proč některé možnosti vyžadují oprávnění správce?",
+                "1. Běžná ochrana prohlížečů NEVYŽADUJE práva správce:\n" +
+                "   V běžném režimu USER fungují systémové proxy (HKCU), HTTP/2 DoH, dělení SNI i AdBlock pro Chrome, Edge i Firefox.\n\n" +
+                "2. Pouze 2 celosystémové volby vyžadují Admina:\n" +
+                "   • Systémové DoH Windows 11: Úprava DNS síťových adaptérů a registru HKLM.\n" +
+                "   • Blokování QUIC UDP 443: Přidání a smazání pravidla Windows Firewallu.\n\n" +
+                "3. Bezpečné a vratné:\n" +
+                "   NologGuard si předem zálohuje původní DNS a při vypnutí vše automaticky obnoví.",
+                "Proxy Windows, DNS a pravidla Firewallu byly úspěšně obnoveny."
+            );
+
+            // 30. Romanian (Română)
+            cat["ro"] = Pack(
+                "DoH + Fragmentare SNI + AdBlock • Păstrează IP-ul real",
+                "Scut", "AdBlock", "Excepții", "Setări", "Jurnal live",
+                "SCUT DEZACTIVAT", "PROTEJAT", "ACTIVEAZĂ SCUTUL", "DEZACTIVEAZĂ SCUTUL",
+                "1-clic pentru a activa proxy DoH local + fragmentare SNI + ocolire QUIC.",
+                "Furnizor DoH:", "Mod fragmentare SNI:", "Autotest",
+                "Setează automat Proxy-ul de sistem Windows (Recomandat)",
+                "Activează AdBlocker și Anti-Tracking (Scut domenii)",
+                "Aplică DoH global în Windows 11 (Necesită Admin)",
+                "Blochează QUIC UDP 443 prin Firewall (Necesită Admin)",
+                "Repornește ca Admin", "ADMIN", "USER",
+                "Fragmentare inteligentă la mijlocul SNI (Recomandat)", "Fragmente mici fixe", "Oprit (Doar proxy DoH)",
+                "SNI-divizat", "Reclame blocate", "DoH (Cache)", "Exceptate",
+                "Acoperire reală: Păstrează IP-ul real, criptează DNS, împarte SNI și blochează domenii terțe de reclame/tracking (nu elimină reclamele video din aceeași sursă, ca YouTube).",
+                "Listă filtre:", "Actualizează", "Activ: {0} domenii blocate | {1} excepții @@",
+                "Reguli proprii (una pe linie; prefix @@ pentru a permite; suportă format hosts & AdBlock):",
+                "Regulile AdBlock au fost salvate și aplicate.",
+                "Blochează reclamele și trackerele la nivelul proxy înainte de interogarea DNS, fără decriptare HTTPS.",
+                "Domenii și rețele excluse de la fragmentarea SNI (suportă *.exemplu.ro și comentarii #):",
+                "Adaugă", "Salvează", "Implicit", "Lista de excepții a fost salvată și aplicată.",
+                "Port Proxy local (1024-65535):", "Dimensiune fragment inițial (octeți):", "Întârziere între fragmente (ms):",
+                "URL DoH personalizat (https://...):", "Limba interfeței:",
+                "Minimizează în zona de notificare la închidere", "Pornește automat odată cu Windows",
+                "Afișează domeniile în Jurnal (doar în RAM, niciodată pe disc)",
+                "Resetare de urgență Proxy și Firewall Windows", "Setări salvate.",
+                "Jurnalul rămâne strict în RAM (ultimele 300 de intrări) și nu este scris pe disc.", "Șterge jurnal",
+                "Deschide NologGuard", "Comută scutul", "Ieșire (Dezactivează scutul)", "NologGuard rulează încă în zona de notificare.",
+                "Drepturi de Administrator necesare",
+                "DoH la nivel de sistem și blocarea QUIC în Firewall necesită drepturi de Administrator. Reporniți NologGuard ca Administrator acum?",
+                "? De ce cer unele opțiuni Admin?", "De ce unele opțiuni necesită drepturi de Administrator?",
+                "1. Protecția zilnică în browser NU cere drepturi de Admin:\n" +
+                "   În modul USER funcționează Proxy-ul de sistem (HKCU), DoH HTTP/2, fragmentarea SNI și AdBlock pentru Chrome, Edge și Firefox.\n\n" +
+                "2. Doar 2 funcții la nivel de sistem cer Admin:\n" +
+                "   • DoH Windows 11 global: Modificarea DNS-ului adaptoarelor și a cheii HKLM.\n" +
+                "   • Blocare QUIC UDP 443: Adăugarea/ștergerea regulii în Windows Firewall.\n\n" +
+                "3. Sigur și reversibil:\n" +
+                "   NologGuard salvează DNS-ul original și restaurează automat totul la oprire sau ieșire.",
+                "Proxy-ul Windows, DNS și regulile Firewall au fost restaurate."
+            );
+
+            // 31. Hungarian (Magyar)
+            cat["hu"] = Pack(
+                "DoH + SNI-feldarabolás + AdBlock • Valódi IP megtartása",
+                "Pajzs", "AdBlock", "Kivételek", "Beállítások", "Élő napló",
+                "PAJZS KIKAPCSOLVA", "VÉDETT", "PAJZS BEKAPCSOLÁSA", "PAJZS KIKAPCSOLÁSA",
+                "1 kattintás a helyi DoH-proxy + SNI-darabolás + QUIC-megkerülés bekapcsolásához.",
+                "DoH szolgáltató:", "SNI darabolási mód:", "Önellenőrzés",
+                "Windows rendszerproxy automatikus beállítása (Ajánlott)",
+                "Reklám- és nyomkövető-blokkoló engedélyezése (Domain-pajzs)",
+                "Windows 11 rendszerszintű DoH alkalmazása (Admin szükséges)",
+                "QUIC UDP 443 tiltása tűzfallal (Admin szükséges)",
+                "Újraindítás Adminként", "ADMIN", "USER",
+                "Okos SNI-középdarabolás (Ajánlott)", "Fix kis csomagok", "Ki (Csak DoH-proxy)",
+                "SNI-darabolt", "Blokkolt", "DoH (Gyorsítótár)", "Kihagyva",
+                "Őszinte hatókör: Megtartja a valódi IP-címet, titkosítja a DNS-t, feldarabolja az SNI-t és blokkolja a külső reklám-/követődomaineket (nem szűri a YouTube-videóreklámokat).",
+                "Szűrőlista:", "Lista frissítése", "Aktív: {0} tiltott domain | {1} @@ kivétel",
+                "Egyéni szabályok (soronként egy; @@ előtag engedélyez; hosts és AdBlock formátum):",
+                "Az AdBlock-szabályok mentve és azonnal alkalmazva.",
+                "A HTTPS visszafejtése nélkül, proxy szinten blokkolja a reklámokat a DNS-lekérdezés előtt.",
+                "Az SNI-darabolásból kizárt domainek és hálózatok (*.example.com és # megjegyzések támogatottak):",
+                "Hozzáadás", "Mentés", "Alapértelmezett", "Kivétellista mentve és alkalmazva.",
+                "Helyi proxyport (1024-65535):", "Kezdeti szeletméret (bájt):", "Késleltetés a szeletek között (ms):",
+                "Egyéni DoH URL (https://...):", "Felület nyelve:",
+                "Kis méret a tálcára bezáráskor", "Automatikus indítás a Windows-zal",
+                "Domainek megjelenítése a naplóban (csak RAM-ban, lemezre nem íródik)",
+                "Windows Proxy és Tűzfal vész-visszaállítás", "Beállítások elmentve.",
+                "A napló kizárólag a memóriában él (utolsó 300 sor), és sosem kerül lemezre.", "Napló törlése",
+                "NologGuard megnyitása", "Pajzs váltása", "Kilépés (Pajzs leállítása)", "A NologGuard tovább fut a tálcán.",
+                "Rendszergazdai jogosultság szükséges",
+                "A rendszerszintű DoH és a tűzfalas QUIC-tiltás rendszergazdai jogot igényel. Újraindítja most rendszergazdaként?",
+                "? Miért kér néha Admin jogot?", "Miért igényel néhány opció rendszergazdai jogot?",
+                "1. A napi böngészővédelem NEM igényel Admin jogot:\n" +
+                "   Normál USER módban működik a rendszerproxy (HKCU), a HTTP/2 DoH, az SNI-darabolás és az AdBlock Chrome, Edge és Firefox alatt.\n\n" +
+                "2. Csak 2 rendszerszintű funkció igényel Admint:\n" +
+                "   • Windows 11 rendszerszintű DoH: hálózati adapter DNS és HKLM módosítása.\n" +
+                "   • QUIC UDP 443 tűzfalszabály: tűzfalszabály létrehozása és törlése.\n\n" +
+                "3. Biztonságos és visszaállítható:\n" +
+                "   A NologGuard előre menti az eredeti DNS-t, és kikapcsoláskor mindent automatikusan visszaállít.",
+                "A Windows Proxy, DNS és tűzfal állapota sikeresen visszaállítva."
+            );
+
+            // 32. Greek (Ελληνικά)
+            cat["el"] = Pack(
+                "DoH + Κατάτμηση SNI + AdBlock • Διατηρεί την πραγματική IP",
+                "Ασπίδα", "AdBlock", "Εξαιρέσεις", "Ρυθμίσεις", "Καταγραφή",
+                "ΑΣΠΙΔΑ ΑΝΕΝΕΡΓΗ", "ΠΡΟΣΤΑΤΕΥΜΕΝΟ", "ΕΝΕΡΓΟΠΟΙΗΣΗ", "ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ",
+                "Με 1 κλικ ενεργοποιείτε το τοπικό DoH proxy + κατάτμηση SNI + παράκαμψη QUIC.",
+                "Πάροχος DoH:", "Λειτουργία SNI:", "Αυτοέλεγχος",
+                "Αυτόματος ορισμός Proxy συστήματος Windows (Προτείνεται)",
+                "Ενεργοποίηση AdBlocker & Anti-Tracking (Προστασία τομέων)",
+                "Εφαρμογή DoH σε όλο το Windows 11 (Απαιτεί Admin)",
+                "Φραγή QUIC UDP 443 μέσω Firewall (Απαιτεί Admin)",
+                "Επανεκκίνηση ως Admin", "ADMIN", "ΧΡΗΣΤΗΣ",
+                "Έξυπνη κατάτμηση μέσου SNI (Προτείνεται)", "Σταθερά μικρά τμήματα", "Ανενεργό (Μόνο DoH Proxy)",
+                "Κατάτμηση SNI", "Αποκλεισμένα", "DoH (Cache)", "Παρακάμφθηκαν",
+                "Ειλικρινές εύρος: Διατηρεί την πραγματική IP, κρυπτογραφεί το DNS, κατακερματίζει το SNI και μπλοκάρει διαφημίσεις/trackers τρίτων (δεν αφαιρεί διαφημίσεις βίντεο ιδίου τομέα όπως YouTube).",
+                "Λίστα φίλτρων:", "Ενημέρωση", "Ενεργό: {0} φραγμένοι τομείς | {1} εξαιρέσεις @@",
+                "Προσαρμοσμένοι κανόνες (ένας ανά γραμμή· @@ για εξαίρεση· υποστηρίζει hosts & AdBlock):",
+                "Οι κανόνες AdBlock αποθηκεύτηκαν και εφαρμόστηκαν.",
+                "Αποκλείει διαφημίσεις/trackers στο επίπεδο proxy πριν από το αίτημα DNS χωρίς αποκρυπτογράφηση HTTPS.",
+                "Τομείς & δίκτυα που εξαιρούνται από κατάτμηση SNI (υποστηρίζει *.example.com και σχόλια #):",
+                "Προσθήκη", "Αποθήκευση", "Προεπιλογή", "Η λίστα εξαιρέσεων αποθηκεύτηκε και εφαρμόστηκε.",
+                "Τοπική θύρα Proxy (1024-65535):", "Μέγεθος αρχικού τμήματος (bytes):", "Καθυστέρηση μεταξύ τμημάτων (ms):",
+                "Προσαρμοσμένο DoH URL (https://...):", "Γλώσσα διεπαφής:",
+                "Ελαχιστοποίηση στην περιοχή ειδοποιήσεων κατά το κλείσιμο", "Αυτόματη εκκίνηση με τα Windows",
+                "Εμφάνιση τομέων στην Καταγραφή (μόνο στη RAM, ποτέ στον δίσκο)",
+                "Επαναφορά έκτακτης ανάγκης Proxy & Firewall Windows", "Οι ρυθμίσεις αποθηκεύτηκαν.",
+                "Τα αρχεία καταγραφής μένουν μόνο στη RAM (τελευταίες 300 γραμμές) και δεν γράφονται στον δίσκο.", "Εκκαθάριση",
+                "Άνοιγμα NologGuard", "Εναλλαγή ασπίδας", "Έξοδος (Κλείνει ασπίδα)", "Το NologGuard εξακολουθεί να εκτελείται στο tray.",
+                "Απαιτούνται δικαιώματα διαχειριστή",
+                "Το DoH συστήματος και η φραγή QUIC στο Firewall απαιτούν δικαιώματα διαχειριστή. Επανεκκίνηση ως Διαχειριστής τώρα;",
+                "? Γιατί κάποιες επιλογές θέλουν Admin;", "Γιατί κάποιες επιλογές απαιτούν Διαχειριστή;",
+                "1. Η καθημερινή προστασία περιηγητή ΔΕΝ χρειάζεται Admin:\n" +
+                "   Στη λειτουργία USER δουλεύουν κανονικά το Proxy συστήματος (HKCU), HTTP/2 DoH, κατάτμηση SNI και AdBlock.\n\n" +
+                "2. Μόνο 2 επιλογές συστήματος απαιτούν Admin:\n" +
+                "   • DoH συστήματος Windows 11: Τροποποίηση DNS καρτών δικτύου και HKLM.\n" +
+                "   • Φραγή QUIC UDP 443: Προσθήκη/διαγραφή κανόνων στο Windows Firewall.\n\n" +
+                "3. Ασφαλές & αναστρέψιμο:\n" +
+                "   Το NologGuard αποθηκεύει αντίγραφο του DNS και επαναφέρει τα πάντα αυτόματα κατά τη διακοπή.",
+                "Το Proxy, το DNS και το Firewall των Windows επαναφέρθηκαν επιτυχώς."
+            );
+
             AddExtra(cat, "ab_builtin", new string[,] {
                 {"en","Built-in"}, {"vi","Có sẵn"}, {"zh","内置"}, {"zh-TW","內建"},
                 {"ja","内蔵済み"}, {"ko","내장됨"}, {"ru","Встроен"}, {"uk","Вбудовано"},
-                {"tr","Dahili"}, {"id","Bawaan"}, {"th","มีในตัว"}, {"es","Integrado"},
-                {"pt","Integrado"}, {"fr","Intégré"}, {"de","Integriert"}, {"it","Integrato"},
-                {"pl","Wbudow."}, {"hi","अंतर्निहित"}
+                {"tr","Dahili"}, {"ar","مضمّن"}, {"fa","داخلی"}, {"he","מובנה"},
+                {"id","Bawaan"}, {"ms","Binaan dalam"}, {"th","มีในตัว"}, {"bn","অন্তর্নির্মিত"},
+                {"hi","अंतर्निहित"}, {"es","Integrado"}, {"pt","Integrado"}, {"fr","Intégré"},
+                {"de","Integriert"}, {"it","Integrato"}, {"nl","Ingebouwd"}, {"pl","Wbudow."},
+                {"cs","Vestavěný"}, {"ro","Integrat"}, {"hu","Beépített"}, {"el","Ενσωματ."},
+                {"sv","Inbyggd"}, {"nb","Innebygd"}, {"da","Indbygget"}, {"fi","Sisäinen"}
             });
             AddExtra(cat, "ab_paused", new string[,] {
                 {"en","Paused on Shield tab"}, {"vi","Đang tắt ở tab Bảo vệ"}, {"zh","已在防护页暂停"}, {"zh-TW","已在防護頁暫停"},
                 {"ja","保護タブで一時停止中"}, {"ko","보호 탭에서 일시 중지됨"}, {"ru","Отключено во вкладке Защита"}, {"uk","Вимкнено у вкладці Захист"},
-                {"tr","Kalkan sekmesinde duraklatıldı"}, {"id","Dijeda di tab Perisai"}, {"th","หยุดชั่วคราวที่แท็บป้องกัน"}, {"es","Pausado en pestaña Escudo"},
-                {"pt","Pausado na aba Escudo"}, {"fr","En pause dans Bouclier"}, {"de","Im Tab Schutz pausiert"}, {"it","In pausa nella scheda Scudo"},
-                {"pl","Wstrzymano w karcie Tarcza"}, {"hi","सुरक्षा टैब में रोका गया"}
+                {"tr","Kalkan sekmesinde duraklatıldı"}, {"ar","متوقف مؤقتاً في تبويب الحماية"}, {"fa","در برگه محافظت متوقف است"}, {"he","מושהה בלשונית ההגנה"},
+                {"id","Dijeda di tab Perisai"}, {"ms","Dijeda pada tab Perisai"}, {"th","หยุดชั่วคราวที่แท็บป้องกัน"}, {"bn","সুরক্ষা ট্যাবে থামানো আছে"},
+                {"hi","सुरक्षा टैब में रोका गया"}, {"es","Pausado en pestaña Escudo"}, {"pt","Pausado na aba Escudo"}, {"fr","En pause dans Bouclier"},
+                {"de","Im Tab Schutz pausiert"}, {"it","In pausa nella scheda Scudo"}, {"nl","Gepauzeerd op tabblad Schild"}, {"pl","Wstrzymano w karcie Tarcza"},
+                {"cs","Pozastaveno na kartě Štít"}, {"ro","Întrerupt în fila Scut"}, {"hu","Szüneteltetve a Pajzs lapon"}, {"el","Σε παύση στην καρτέλα Ασπίδα"},
+                {"sv","Pausad på fliken Skydd"}, {"nb","Pauset i Skjold-fanen"}, {"da","Sat på pause under Skjold"}, {"fi","Keskeytetty Suoja-välilehdellä"}
             });
             AddExtra(cat, "btn_test_doh", new string[,] {
                 {"en","Self-Check"}, {"vi","Tự kiểm tra"}, {"zh","一键自检"}, {"zh-TW","一鍵自檢"},
                 {"ja","自己診断"}, {"ko","자가 진단"}, {"ru","Проверка"}, {"uk","Перевірка"},
-                {"tr","Otomatik Test"}, {"id","Cek Sistem"}, {"th","ตรวจระบบ"}, {"es","Autotest"},
-                {"pt","Autoteste"}, {"fr","Diagnostic"}, {"de","Selbsttest"}, {"it","Autotest"},
-                {"pl","Autotest"}, {"hi","स्व-जांच"}
+                {"tr","Otomatik Test"}, {"ar","فحص ذاتي"}, {"fa","خودآزمایی"}, {"he","בדיקה עצמית"},
+                {"id","Cek Sistem"}, {"ms","Uji Sendiri"}, {"th","ตรวจระบบ"}, {"bn","স্ব-পরীক্ষা"},
+                {"hi","स्व-जांच"}, {"es","Autotest"}, {"pt","Autoteste"}, {"fr","Diagnostic"},
+                {"de","Selbsttest"}, {"it","Autotest"}, {"nl","Zelftest"}, {"pl","Autotest"},
+                {"cs","Autotest"}, {"ro","Autotest"}, {"hu","Önellenőrzés"}, {"el","Αυτοέλεγχος"},
+                {"sv","Självtest"}, {"nb","Selvtest"}, {"da","Selvtest"}, {"fi","Itsetesti"}
             });
             AddExtra(cat, "diag_ok_prefix", new string[,] {
                 {"en","✓ Self-Check: DoH {0} ({1}ms) • AdBlock {2}"},
@@ -883,15 +1496,29 @@ namespace NologGuard
                 {"ru","✓ Проверка OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"uk","✓ Перевірка OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"tr","✓ Test OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"ar","✓ فحص ذاتي OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"fa","✓ خودآزمایی OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"he","✓ בדיקה עצמית OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"id","✓ Cek OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"ms","✓ Uji OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"th","✓ ตรวจระบบ OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"bn","✓ পরীক্ষা OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"hi","✓ जांच OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"es","✓ Autotest OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"pt","✓ Autoteste OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"fr","✓ Diagnostic OK : DoH {0} ({1}ms) • AdBlock {2}"},
                 {"de","✓ Selbsttest OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"it","✓ Autotest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"nl","✓ Zelftest OK: DoH {0} ({1}ms) • AdBlock {2}"},
                 {"pl","✓ Autotest OK: DoH {0} ({1}ms) • AdBlock {2}"},
-                {"hi","✓ जांच OK: DoH {0} ({1}ms) • AdBlock {2}"}
+                {"cs","✓ Autotest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"ro","✓ Autotest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"hu","✓ Teszt OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"el","✓ Έλεγχος OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"sv","✓ Självtest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"nb","✓ Selvtest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"da","✓ Selvtest OK: DoH {0} ({1}ms) • AdBlock {2}"},
+                {"fi","✓ Itsetesti OK: DoH {0} ({1}ms) • AdBlock {2}"}
             });
             AddExtra(cat, "ab_custom_url", new string[,] {
                 {"en","Custom Filter URL (hosts / domain list):"},
@@ -903,15 +1530,29 @@ namespace NologGuard
                 {"ru","Свой URL фильтра (hosts / домены):"},
                 {"uk","Власний URL фільтра (hosts / домени):"},
                 {"tr","Özel Filtre URL'si (hosts / alan adı):"},
+                {"ar","رابط فلتر مخصص (hosts / قائمة نطاقات):"},
+                {"fa","آدرس فیلتر سفارشی (فهرست hosts / دامنه):"},
+                {"he","כתובת מסנן מותאמת (hosts / דומיינים):"},
                 {"id","URL Filter Kustom (hosts / domain):"},
+                {"ms","URL Penapis Tersuai (hosts / domain):"},
                 {"th","URL ตัวกรองกำหนดเอง (hosts / โดเมน):"},
+                {"bn","কাস্টম ফিল্টার URL (hosts / ডোমেইন):"},
+                {"hi","कस्टम फ़िल्टर URL (hosts / डोमेन):"},
                 {"es","URL de filtro personalizado (hosts / dominios):"},
                 {"pt","URL de filtro personalizado (hosts / domínios):"},
                 {"fr","URL de filtre personnalisée (hosts / domaines) :"},
                 {"de","Benutzerdefinierte Filter-URL (hosts / Domains):"},
                 {"it","URL filtro personalizzato (hosts / domini):"},
+                {"nl","Aangepaste filter-URL (hosts / domeinen):"},
                 {"pl","Własny adres URL filtra (hosts / domeny):"},
-                {"hi","कस्टम फ़िल्टर URL (hosts / डोमेन):"}
+                {"cs","Vlastní URL filtru (hosts / domény):"},
+                {"ro","URL filtru personalizat (hosts / domenii):"},
+                {"hu","Egyéni szűrő URL (hosts / domainek):"},
+                {"el","Προσαρμοσμένο URL φίλτρου (hosts / τομείς):"},
+                {"sv","Anpassad filter-URL (hosts / domäner):"},
+                {"nb","Egendefinert filter-URL (hosts / domener):"},
+                {"da","Brugerdefineret filter-URL (hosts / domæner):"},
+                {"fi","Oma suodatin-URL (hosts / verkkotunnukset):"}
             });
             AddExtra(cat, "chk_auto_protect", new string[,] {
                 {"en","Automatically enable Shield when NologGuard launches"},
@@ -923,78 +1564,119 @@ namespace NologGuard
                 {"ru","Автоматически включать защиту при запуске NologGuard"},
                 {"uk","Автоматично вмикати захист при запуску NologGuard"},
                 {"tr","NologGuard açıldığında korumayı otomatik etkinleştir"},
+                {"ar","تفعيل الحماية تلقائياً عند تشغيل NologGuard"},
+                {"fa","فعال‌سازی خودکار سپر هنگام باز شدن NologGuard"},
+                {"he","הפעל הגנה אוטומטית בעת פתיחת NologGuard"},
                 {"id","Aktifkan Perisai otomatis saat NologGuard dibuka"},
+                {"ms","Aktifkan Perisai automatik apabila NologGuard dibuka"},
                 {"th","เปิดการป้องกันอัตโนมัติเมื่อเปิด NologGuard"},
+                {"bn","NologGuard খুললে স্বয়ংক্রিয়ভাবে সুরক্ষা চালু করুন"},
+                {"hi","NologGuard खुलने पर सुरक्षा स्वतः चालू करें"},
                 {"es","Activar Escudo automáticamente al abrir NologGuard"},
                 {"pt","Ativar Proteção automaticamente ao iniciar o NologGuard"},
                 {"fr","Activer automatiquement le Bouclier au lancement de NologGuard"},
                 {"de","Schutz beim Start von NologGuard automatisch aktivieren"},
                 {"it","Attiva automaticamente lo Scudo all'avvio di NologGuard"},
+                {"nl","Schild automatisch inschakelen bij starten van NologGuard"},
                 {"pl","Automatycznie włączaj Tarczę po uruchomieniu NologGuard"},
-                {"hi","NologGuard खुलने पर सुरक्षा स्वतः चालू करें"}
+                {"cs","Automaticky zapnout Štít při spuštění NologGuard"},
+                {"ro","Activează automat Scutul la pornirea NologGuard"},
+                {"hu","Pajzs automatikus bekapcsolása a NologGuard indításakor"},
+                {"el","Αυτόματη ενεργοποίηση Ασπίδας κατά την εκκίνηση του NologGuard"},
+                {"sv","Aktivera skydd automatiskt när NologGuard startas"},
+                {"nb","Aktiver skjold automatisk når NologGuard starter"},
+                {"da","Aktiver skjold automatisk når NologGuard åbner"},
+                {"fi","Ota suoja käyttöön automaattisesti NologGuardin käynnistyessä"}
             });
             AddExtra(cat, "btn_check_update", new string[,] {
                 {"en","Check for Updates"}, {"vi","Kiểm tra cập nhật"}, {"zh","检查更新"}, {"zh-TW","檢查更新"},
                 {"ja","アップデート確認"}, {"ko","업데이트 확인"}, {"ru","Проверить обновления"}, {"uk","Перевірити оновлення"},
-                {"tr","Güncelleme Kontrolü"}, {"id","Cek Pembaruan"}, {"th","ตรวจสอบอัปเดต"}, {"es","Buscar actualizaciones"},
-                {"pt","Verificar atualizações"}, {"fr","Vérifier les mises à jour"}, {"de","Nach Updates suchen"}, {"it","Verifica aggiornamenti"},
-                {"pl","Sprawdź aktualizacje"}, {"hi","अपडेट जांचें"}
+                {"tr","Güncelleme Kontrolü"}, {"ar","التحقق من التحديثات"}, {"fa","بررسی به‌روزرسانی"}, {"he","בדוק עדכונים"},
+                {"id","Cek Pembaruan"}, {"ms","Semak Kemas Kini"}, {"th","ตรวจสอบอัปเดต"}, {"bn","আপডেট পরীক্ষা করুন"},
+                {"hi","अपडेट जांचें"}, {"es","Buscar actualizaciones"}, {"pt","Verificar atualizações"}, {"fr","Vérifier les mises à jour"},
+                {"de","Nach Updates suchen"}, {"it","Verifica aggiornamenti"}, {"nl","Controleren op updates"}, {"pl","Sprawdź aktualizacje"},
+                {"cs","Zkontrolovat aktualizace"}, {"ro","Verifică actualizările"}, {"hu","Frissítések keresése"}, {"el","Έλεγχος ενημερώσεων"},
+                {"sv","Sök efter uppdateringar"}, {"nb","Se etter oppdateringer"}, {"da","Søg efter opdateringer"}, {"fi","Tarkista päivitykset"}
             });
             AddExtra(cat, "upd_checking", new string[,] {
                 {"en","Checking GitHub..."}, {"vi","Đang kiểm tra GitHub..."}, {"zh","正在检查 GitHub..."}, {"zh-TW","正在檢查 GitHub..."},
                 {"ja","GitHub を確認中..."}, {"ko","GitHub 확인 중..."}, {"ru","Проверка GitHub..."}, {"uk","Перевірка GitHub..."},
-                {"tr","GitHub kontrol ediliyor..."}, {"id","Memeriksa GitHub..."}, {"th","กำลังตรวจสอบ GitHub..."}, {"es","Comprobando GitHub..."},
-                {"pt","Verificando GitHub..."}, {"fr","Vérification sur GitHub..."}, {"de","GitHub wird geprüft..."}, {"it","Controllo su GitHub..."},
-                {"pl","Sprawdzanie GitHub..."}, {"hi","GitHub जांच रहे हैं..."}
+                {"tr","GitHub kontrol ediliyor..."}, {"ar","جارٍ التحقق من GitHub..."}, {"fa","در حال بررسی GitHub..."}, {"he","בודק ב-GitHub..."},
+                {"id","Memeriksa GitHub..."}, {"ms","Menyemak GitHub..."}, {"th","กำลังตรวจสอบ GitHub..."}, {"bn","GitHub পরীক্ষা করা হচ্ছে..."},
+                {"hi","GitHub जांच रहे हैं..."}, {"es","Comprobando GitHub..."}, {"pt","Verificando GitHub..."}, {"fr","Vérification sur GitHub..."},
+                {"de","GitHub wird geprüft..."}, {"it","Controllo su GitHub..."}, {"nl","GitHub controleren..."}, {"pl","Sprawdzanie GitHub..."},
+                {"cs","Kontrola GitHubu..."}, {"ro","Se verifică GitHub..."}, {"hu","GitHub ellenőrzése..."}, {"el","Έλεγχος στο GitHub..."},
+                {"sv","Kontrollerar GitHub..."}, {"nb","Sjekker GitHub..."}, {"da","Kontrollerer GitHub..."}, {"fi","Tarkistetaan GitHubista..."}
             });
             AddExtra(cat, "upd_latest", new string[,] {
                 {"en","Latest version (v{0})"}, {"vi","Đang dùng bản mới nhất (v{0})"}, {"zh","已是最新版 (v{0})"}, {"zh-TW","已是最新版 (v{0})"},
                 {"ja","最新版を使用中 (v{0})"}, {"ko","최신 버전입니다 (v{0})"}, {"ru","Актуальная версия (v{0})"}, {"uk","Остання версія (v{0})"},
-                {"tr","En güncel sürüm (v{0})"}, {"id","Versi terbaru (v{0})"}, {"th","เป็นเวอร์ชันล่าสุดแล้ว (v{0})"}, {"es","Última versión (v{0})"},
-                {"pt","Versão mais recente (v{0})"}, {"fr","À jour (v{0})"}, {"de","Aktuellste Version (v{0})"}, {"it","Versione aggiornata (v{0})"},
-                {"pl","Najnowsza wersja (v{0})"}, {"hi","नवीनतम संस्करण (v{0})"}
+                {"tr","En güncel sürüm (v{0})"}, {"ar","أحدث إصدار (v{0})"}, {"fa","آخرین نسخه (v{0})"}, {"he","הגרסה העדכנית ביותר (v{0})"},
+                {"id","Versi terbaru (v{0})"}, {"ms","Versi terkini (v{0})"}, {"th","เป็นเวอร์ชันล่าสุดแล้ว (v{0})"}, {"bn","সর্বশেষ সংস্করণ (v{0})"},
+                {"hi","नवीनतम संस्करण (v{0})"}, {"es","Última versión (v{0})"}, {"pt","Versão mais recente (v{0})"}, {"fr","À jour (v{0})"},
+                {"de","Aktuellste Version (v{0})"}, {"it","Versione aggiornata (v{0})"}, {"nl","Nieuwste versie (v{0})"}, {"pl","Najnowsza wersja (v{0})"},
+                {"cs","Nejnovější verze (v{0})"}, {"ro","Ultima versiune (v{0})"}, {"hu","Legújabb verzió (v{0})"}, {"el","Τελευταία έκδοση (v{0})"},
+                {"sv","Senaste versionen (v{0})"}, {"nb","Nyeste versjon (v{0})"}, {"da","Nyeste version (v{0})"}, {"fi","Uusin versio (v{0})"}
             });
             AddExtra(cat, "upd_available", new string[,] {
                 {"en","New v{0} available! Opening..."}, {"vi","Có bản mới v{0}! Đang mở..."}, {"zh","发现新版本 v{0}！正在打开..."}, {"zh-TW","發現新版本 v{0}！正在開啟..."},
                 {"ja","新バージョン v{0} あり！開いています..."}, {"ko","새 버전 v{0} 있음! 여는 중..."}, {"ru","Доступна v{0}! Открытие..."}, {"uk","Доступна v{0}! Відкриття..."},
-                {"tr","Yeni v{0} mevcut! Açılıyor..."}, {"id","Versi baru v{0} tersedia! Membuka..."}, {"th","มีเวอร์ชันใหม่ v{0}! กำลังเปิด..."}, {"es","¡Nueva v{0} disponible! Abriendo..."},
-                {"pt","Nova v{0} disponível! Abrindo..."}, {"fr","Nouvelle v{0} disponible ! Ouverture..."}, {"de","Neue v{0} verfügbar! Wird geöffnet..."}, {"it","Nuova v{0} disponibile! Apertura..."},
-                {"pl","Nowa v{0} dostępna! Otwieranie..."}, {"hi","नया v{0} उपलब्ध! खुल रहा है..."}
+                {"tr","Yeni v{0} mevcut! Açılıyor..."}, {"ar","يتوفر v{0} جديد! جارٍ الفتح..."}, {"fa","نسخه جدید v{0} موجود است! در حال باز کردن..."}, {"he","גרסה חדשה v{0} זמינה! פותח..."},
+                {"id","Versi baru v{0} tersedia! Membuka..."}, {"ms","Versi baharu v{0} tersedia! Membuka..."}, {"th","มีเวอร์ชันใหม่ v{0}! กำลังเปิด..."}, {"bn","নতুন v{0} উপলব্ধ! খোলা হচ্ছে..."},
+                {"hi","नया v{0} उपलब्ध! खुल रहा है..."}, {"es","¡Nueva v{0} disponible! Abriendo..."}, {"pt","Nova v{0} disponível! Abrindo..."}, {"fr","Nouvelle v{0} disponible ! Ouverture..."},
+                {"de","Neue v{0} verfügbar! Wird geöffnet..."}, {"it","Nuova v{0} disponibile! Apertura..."}, {"nl","Nieuwe v{0} beschikbaar! Openen..."}, {"pl","Nowa v{0} dostępna! Otwieranie..."},
+                {"cs","Nová v{0} k dispozici! Otevírání..."}, {"ro","Noua v{0} disponibilă! Se deschide..."}, {"hu","Új v{0} érhető el! Megnyitás..."}, {"el","Νέα v{0} διαθέσιμη! Άνοιγμα..."},
+                {"sv","Ny v{0} tillgänglig! Öppnar..."}, {"nb","Ny v{0} tilgjengelig! Åpner..."}, {"da","Ny v{0} tilgængelig! Åbner..."}, {"fi","Uusi v{0} saatavilla! Avataan..."}
             });
             AddExtra(cat, "upd_err", new string[,] {
                 {"en","Update check failed: {0}"}, {"vi","Không kiểm tra được: {0}"}, {"zh","检查失败: {0}"}, {"zh-TW","檢查失敗: {0}"},
                 {"ja","確認エラー: {0}"}, {"ko","확인 실패: {0}"}, {"ru","Ошибка проверки: {0}"}, {"uk","Помилка перевірки: {0}"},
-                {"tr","Güncelleme hatası: {0}"}, {"id","Gagal memeriksa: {0}"}, {"th","ตรวจสอบไม่สำเร็จ: {0}"}, {"es","Error al comprobar: {0}"},
-                {"pt","Falha ao verificar: {0}"}, {"fr","Échec de vérification : {0}"}, {"de","Prüfung fehlgeschlagen: {0}"}, {"it","Errore di verifica: {0}"},
-                {"pl","Błąd sprawdzania: {0}"}, {"hi","जांच विफल: {0}"}
+                {"tr","Güncelleme hatası: {0}"}, {"ar","فشل التحقق: {0}"}, {"fa","خطای بررسی: {0}"}, {"he","בדיקת העדכון נכשלה: {0}"},
+                {"id","Gagal memeriksa: {0}"}, {"ms","Semakan gagal: {0}"}, {"th","ตรวจสอบไม่สำเร็จ: {0}"}, {"bn","আপডেট পরীক্ষা ব্যর্থ: {0}"},
+                {"hi","जांच विफल: {0}"}, {"es","Error al comprobar: {0}"}, {"pt","Falha ao verificar: {0}"}, {"fr","Échec de vérification : {0}"},
+                {"de","Prüfung fehlgeschlagen: {0}"}, {"it","Errore di verifica: {0}"}, {"nl","Controleren mislukt: {0}"}, {"pl","Błąd sprawdzania: {0}"},
+                {"cs","Kontrola selhala: {0}"}, {"ro","Verificarea a eșuat: {0}"}, {"hu","Ellenőrzés sikertelen: {0}"}, {"el","Αποτυχία ελέγχου: {0}"},
+                {"sv","Kunde inte söka: {0}"}, {"nb","Oppdateringssjekk feilet: {0}"}, {"da","Opdateringstjek fejlede: {0}"}, {"fi","Tarkistus epäonnistui: {0}"}
             });
             AddExtra(cat, "tray_pause_ab5", new string[,] {
                 {"en","Pause AdBlock (5 min)"}, {"vi","Tạm dừng Chặn QC (5 phút)"}, {"zh","暂停去广告 (5 分钟)"}, {"zh-TW","暫停廣告封鎖 (5 分鐘)"},
                 {"ja","広告ブロック一時停止 (5分)"}, {"ko","광고 차단 일시 중지 (5분)"}, {"ru","Пауза AdBlock (5 мин)"}, {"uk","Пауза AdBlock (5 хв)"},
-                {"tr","AdBlock'u Duraklat (5 dk)"}, {"id","Jeda AdBlock (5 mnt)"}, {"th","หยุดพัก AdBlock (5 นาที)"}, {"es","Pausar AdBlock (5 min)"},
-                {"pt","Pausar AdBlock (5 min)"}, {"fr","Mettre AdBlock en pause (5 min)"}, {"de","AdBlock pausieren (5 Min.)"}, {"it","Pausa AdBlock (5 min)"},
-                {"pl","Wstrzymaj AdBlock (5 min)"}, {"hi","AdBlock रोकें (5 मिनट)"}
+                {"tr","AdBlock'u Duraklat (5 dk)"}, {"ar","إيقاف مانع الإعلانات (5 د)"}, {"fa","توقف تبلیغ‌گیر (۵ دقیقه)"}, {"he","השהה חוסם פרסומות (5 דק')"},
+                {"id","Jeda AdBlock (5 mnt)"}, {"ms","Jeda AdBlock (5 min)"}, {"th","หยุดพัก AdBlock (5 นาที)"}, {"bn","AdBlock থামান (৫ মি.)"},
+                {"hi","AdBlock रोकें (5 मिनट)"}, {"es","Pausar AdBlock (5 min)"}, {"pt","Pausar AdBlock (5 min)"}, {"fr","Mettre AdBlock en pause (5 min)"},
+                {"de","AdBlock pausieren (5 Min.)"}, {"it","Pausa AdBlock (5 min)"}, {"nl","AdBlock pauzeren (5 min)"}, {"pl","Wstrzymaj AdBlock (5 min)"},
+                {"cs","Pozastavit AdBlock (5 min)"}, {"ro","Pauză AdBlock (5 min)"}, {"hu","AdBlock szüneteltetése (5 p)"}, {"el","Παύση AdBlock (5 λ.)"},
+                {"sv","Pausa AdBlock (5 min)"}, {"nb","Pause AdBlock (5 min)"}, {"da","Sæt AdBlock på pause (5 min)"}, {"fi","Keskeytä AdBlock (5 min)"}
             });
             AddExtra(cat, "tray_pause_shield15", new string[,] {
                 {"en","Pause Shield (15 min)"}, {"vi","Tạm dừng Bảo vệ (15 phút)"}, {"zh","暂停防护 (15 分钟)"}, {"zh-TW","暫停防護 (15 分鐘)"},
                 {"ja","保護を一時停止 (15分)"}, {"ko","보호 일시 중지 (15분)"}, {"ru","Пауза защиты (15 мин)"}, {"uk","Пауза захисту (15 хв)"},
-                {"tr","Kalkanı Duraklat (15 dk)"}, {"id","Jeda Perisai (15 mnt)"}, {"th","หยุดพักการป้องกัน (15 นาที)"}, {"es","Pausar Escudo (15 min)"},
-                {"pt","Pausar Proteção (15 min)"}, {"fr","Mettre Bouclier en pause (15 min)"}, {"de","Schutz pausieren (15 Min.)"}, {"it","Pausa Scudo (15 min)"},
-                {"pl","Wstrzymaj Tarczę (15 min)"}, {"hi","सुरक्षा रोकें (15 मिनट)"}
+                {"tr","Kalkanı Duraklat (15 dk)"}, {"ar","إيقاف الحماية (15 د)"}, {"fa","توقف سپر (۱۵ دقیقه)"}, {"he","השהה הגנה (15 דק')"},
+                {"id","Jeda Perisai (15 mnt)"}, {"ms","Jeda Perisai (15 min)"}, {"th","หยุดพักการป้องกัน (15 นาที)"}, {"bn","সুরক্ষা থামান (১৫ মি.)"},
+                {"hi","सुरक्षा रोकें (15 मिनट)"}, {"es","Pausar Escudo (15 min)"}, {"pt","Pausar Proteção (15 min)"}, {"fr","Mettre Bouclier en pause (15 min)"},
+                {"de","Schutz pausieren (15 Min.)"}, {"it","Pausa Scudo (15 min)"}, {"nl","Schild pauzeren (15 min)"}, {"pl","Wstrzymaj Tarczę (15 min)"},
+                {"cs","Pozastavit Štít (15 min)"}, {"ro","Pauză Scut (15 min)"}, {"hu","Pajzs szüneteltetése (15 p)"}, {"el","Παύση Ασπίδας (15 λ.)"},
+                {"sv","Pausa skydd (15 min)"}, {"nb","Pause Skjold (15 min)"}, {"da","Sæt Skjold på pause (15 min)"}, {"fi","Keskeytä suoja (15 min)"}
             });
             AddExtra(cat, "tray_resume", new string[,] {
                 {"en","Resume Now"}, {"vi","Tiếp tục ngay"}, {"zh","立即恢复"}, {"zh-TW","立即恢復"},
                 {"ja","今すぐ再開"}, {"ko","지금 재개"}, {"ru","Возобновить сейчас"}, {"uk","Відновити зараз"},
-                {"tr","Şimdi Sürdür"}, {"id","Lanjutkan Sekarang"}, {"th","กลับมาทำงานทันที"}, {"es","Reanudar ahora"},
-                {"pt","Retomar agora"}, {"fr","Reprendre maintenant"}, {"de","Jetzt fortsetzen"}, {"it","Riprendi ora"},
-                {"pl","Wznów teraz"}, {"hi","अभी फिर शुरू करें"}
+                {"tr","Şimdi Sürdür"}, {"ar","استئناف الآن"}, {"fa","ادامه فوری"}, {"he","חדש כעת"},
+                {"id","Lanjutkan Sekarang"}, {"ms","Sambung Sekarang"}, {"th","กลับมาทำงานทันที"}, {"bn","এখনই চালু করুন"},
+                {"hi","अभी फिर शुरू करें"}, {"es","Reanudar ahora"}, {"pt","Retomar agora"}, {"fr","Reprendre maintenant"},
+                {"de","Jetzt fortsetzen"}, {"it","Riprendi ora"}, {"nl","Nu hervatten"}, {"pl","Wznów teraz"},
+                {"cs","Obnovit nyní"}, {"ro","Reia acum"}, {"hu","Folytatás most"}, {"el","Συνέχιση τώρα"},
+                {"sv","Återuppta nu"}, {"nb","Fortsett nå"}, {"da","Genoptag nu"}, {"fi","Jatka nyt"}
             });
             AddExtra(cat, "tray_paused_msg", new string[,] {
                 {"en","Paused ({0}m left)"}, {"vi","Tạm dừng (còn {0}p)"}, {"zh","已暂停 (剩余 {0}分)"}, {"zh-TW","已暫停 (剩餘 {0}分)"},
                 {"ja","一時停止中 (残り {0}分)"}, {"ko","일시 중지 (남은 {0}분)"}, {"ru","Пауза ({0} мин)"}, {"uk","Пауза ({0} хв)"},
-                {"tr","Duraklatıldı ({0} dk)"}, {"id","Dijeda ({0} mnt lagi)"}, {"th","หยุดชั่วคราว ({0} นาที)"}, {"es","En pausa ({0} min)"},
-                {"pt","Em pausa ({0} min)"}, {"fr","En pause ({0} min)"}, {"de","Pausiert ({0} Min.)"}, {"it","In pausa ({0} min)"},
-                {"pl","Wstrzymano ({0} min)"}, {"hi","रोका गया ({0} मिनट)"}
+                {"tr","Duraklatıldı ({0} dk)"}, {"ar","متوقف ({0} د)"}, {"fa","متوقف ({0} د)"}, {"he","מושהה ({0} דק')"},
+                {"id","Dijeda ({0} mnt lagi)"}, {"ms","Dijeda ({0} min)"}, {"th","หยุดชั่วคราว ({0} นาที)"}, {"bn","থামানো ({0} মি.)"},
+                {"hi","रोका गया ({0} मिनट)"}, {"es","En pausa ({0} min)"}, {"pt","Em pausa ({0} min)"}, {"fr","En pause ({0} min)"},
+                {"de","Pausiert ({0} Min.)"}, {"it","In pausa ({0} min)"}, {"nl","Gepauzeerd ({0} min)"}, {"pl","Wstrzymano ({0} min)"},
+                {"cs","Pozastaveno ({0} min)"}, {"ro","În pauză ({0} min)"}, {"hu","Szünet ({0} p)"}, {"el","Παύση ({0} λ.)"},
+                {"sv","Pausad ({0} min)"}, {"nb","Pauset ({0} min)"}, {"da","Pause ({0} min)"}, {"fi","Tauko ({0} min)"}
             });
 
             return cat;

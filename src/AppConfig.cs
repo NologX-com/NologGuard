@@ -128,7 +128,7 @@ namespace NologGuard
     [DataContract]
     public sealed class AppConfig
     {
-        public const string AppVersion = "1.2.0";
+        public const string AppVersion = "1.2.1";
         public const string UserAgent = "NologGuard/1.2 (NologX.com)";
         public const string GitHubRepo = "NologX-com/NologGuard";
 

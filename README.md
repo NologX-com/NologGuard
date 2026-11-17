@@ -51,9 +51,9 @@ Normally, even when you visit an `https://` website, your ISP can still tell **w
 7. **System Tray Optimization & Quick Pause:**
    - **Auto-Trim RAM in Tray:** When minimized/closed to System Tray, compacts GC heaps and trims working set (`SetProcessWorkingSetSize` + `EmptyWorkingSet`), reducing background memory footprint dramatically (measured ~1–16 MB working set in tray).
    - **Tray Quick Pause:** Right-click the tray icon to pause **AdBlock (5 min)** or **Shield (15 min)** with an automatic countdown timer, or click **Resume Now**.
-8. **Zero-Trace Privacy, 18 Languages & CLI Tools:**
+8. **Zero-Trace Privacy, 32 Languages (incl. RTL) & CLI Tools:**
    - Logs live strictly in volatile RAM (last 300 lines, never written to disk).
-   - 18 built-in languages with Windows UI auto-detection (`English`, `Tiếng Việt`, `简体中文`, `繁體中文`, `日本語`, `한국어`, `Русский`, `Українська`, `Türkçe`, `Bahasa Indonesia`, `ภาษาไทย`, `Español`, `Português`, `Français`, `Deutsch`, `Italiano`, `Polski`, `हिन्दी`).
+   - **32 built-in languages** with Windows UI auto-detection and automatic Right-to-Left layout (`English`, `Tiếng Việt`, `简体中文`, `繁體中文`, `日本語`, `한국어`, `Русский`, `Українська`, `Türkçe`, `العربية`, `فارسی`, `עברית`, `Bahasa Indonesia`, `Bahasa Melayu`, `ภาษาไทย`, `বাংলা`, `हिन्दी`, `Español`, `Português`, `Français`, `Deutsch`, `Italiano`, `Nederlands`, `Polski`, `Čeština`, `Română`, `Magyar`, `Ελληνικά`, `Svenska`, `Norsk`, `Dansk`, `Suomi`).
    - Manual **Check for Updates** button in Settings (queries GitHub Releases only when clicked).
    - CLI recovery/automation flags: `--minimized`, `--recover`, `--exit`.
 

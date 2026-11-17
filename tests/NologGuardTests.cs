@@ -35,7 +35,7 @@ namespace NologGuardTests
             RunTest("ProxyServer_VerifyLoopbackAdBlock", TestProxyVerifyLoopbackAdBlock);
             RunTest("SingleInstanceLock_RelaunchWaitsAndAcquires", TestSingleInstanceLockRelaunch);
             RunTest("UpdateChecker_VersionAndJsonParsing", TestUpdateCheckerParsing);
-            RunTest("Strings_All18LanguagesComplete", TestAllLanguagesComplete);
+            RunTest("Strings_All32LanguagesComplete", TestAllLanguagesComplete);
 
             if (runLive)
             {
@@ -743,7 +743,12 @@ namespace NologGuardTests
 
         private static void TestAllLanguagesComplete()
         {
-            Assert(Strings.Languages.Length == 18, "Expected 18 supported languages");
+            Assert(Strings.Languages.Length == 32, "Expected 32 supported languages, got " + Strings.Languages.Length);
+            Assert(Strings.IsRightToLeft("ar") && Strings.IsRightToLeft("fa") && Strings.IsRightToLeft("he"),
+                "Arabic, Persian, and Hebrew must be marked RTL");
+            Assert(!Strings.IsRightToLeft("en") && !Strings.IsRightToLeft("vi"),
+                "English and Vietnamese must be LTR");
+
             ICollection<string> keys = Strings.GetAllKeys();
             Assert(keys.Count >= 60, "Expected full UI string key set (>=60), got " + keys.Count);
 
@@ -755,9 +760,10 @@ namespace NologGuardTests
 
                 foreach (string key in keys)
                 {
+                    Assert(Strings.HasKey(code, key), "Missing explicit key [" + code + "]." + key);
                     string val = Strings.Get(code, key);
                     Assert(!string.IsNullOrEmpty(val) && val != key,
-                        "Missing or empty translation for [" + code + "]." + key);
+                        "Empty translation for [" + code + "]." + key);
                 }
             }
         }

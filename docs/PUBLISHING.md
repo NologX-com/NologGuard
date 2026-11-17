@@ -52,7 +52,7 @@ Tài liệu này hướng dẫn từng bước đưa **NologGuard** bản đầy
    - **Installer parameters (Silent install switch):**
      `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`
    - **Supported architectures:** `x64`
-   - **Supported languages:** Chọn các ngôn ngữ bạn muốn hiển thị trên Store (app đã hỗ trợ sẵn 18 ngôn ngữ).
+   - **Supported languages:** Chọn các ngôn ngữ bạn muốn hiển thị trên Store (app đã hỗ trợ sẵn 32 ngôn ngữ).
 4. Trong mục **Properties / Store listings**:
    - **Privacy policy URL:** Gắn link trang chính sách riêng tư trên `NologX.com` hoặc link `https://github.com/NologX-com/NologGuard/blob/main/PRIVACY.md`.
 5. Trong **Notes for certification** (rất quan trọng để qua duyệt nhanh):

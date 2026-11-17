@@ -51,9 +51,9 @@ Bình thường khi bạn mở một trang web `https://`, dù nội dung bên t
 7. **Khay hệ thống (System Tray) tối ưu RAM & Tạm dừng nhanh:**
    - **Tự thu gọn RAM:** Khi bấm `✕` thu xuống khay hệ thống, NologGuard tạm dừng timer UI, dọn rác GC và gọi `SetProcessWorkingSetSize` + `EmptyWorkingSet` giúp RAM Working Set chạy nền giảm xuống mức rất thấp (~1–16 MB).
    - **Tạm dừng nhanh:** Chuột phải icon khay hệ thống để chọn **Tạm dừng Chặn QC (5 phút)** hoặc **Tạm dừng Bảo vệ (15 phút)** với hẹn giờ tự bật lại, hoặc bấm **Tiếp tục ngay**.
-8. **Không lưu vết ra ổ cứng, 18 ngôn ngữ & Công cụ dòng lệnh:**
+8. **Không lưu vết ra ổ cứng, 32 ngôn ngữ & Công cụ dòng lệnh:**
    - **Nhật ký** chỉ giữ tạm 300 dòng gần nhất trong **RAM**, tắt app là xóa sạch, tuyệt đối không ghi lịch sử duyệt web xuống ổ đĩa.
-   - Hỗ trợ **18 ngôn ngữ**, kiểm tra cập nhật GitHub thủ công trong Cài đặt, và các cờ CLI `--minimized`, `--recover`, `--exit`.
+   - Hỗ trợ **32 ngôn ngữ** (tự nhận diện ngôn ngữ Windows, tự động đổi bố cục phải-sang-trái RTL cho tiếng Ả Rập/Ba Tư/Do Thái: `Tiếng Việt`, `English`, `简体中文`, `繁體中文`, `日本語`, `한국어`, `Русский`, `Українська`, `Türkçe`, `العربية`, `فارسی`, `עברית`, `Bahasa Indonesia`, `Bahasa Melayu`, `ภาษาไทย`, `বাংলা`, `हिन्दी`, `Español`, `Português`, `Français`, `Deutsch`, `Italiano`, `Nederlands`, `Polski`, `Čeština`, `Română`, `Magyar`, `Ελληνικά`, `Svenska`, `Norsk`, `Dansk`, `Suomi`), kiểm tra cập nhật GitHub thủ công trong Cài đặt, và các cờ CLI `--minimized`, `--recover`, `--exit`.
 
 ---
 

@@ -385,7 +385,7 @@ namespace NologGuard
             logoBadge.Child = shieldPath;
 
             StackPanel titleCol = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            StackPanel titleRow = new StackPanel { Orientation = Orientation.Horizontal };
+            StackPanel titleRow = new StackPanel { Orientation = Orientation.Horizontal, FlowDirection = FlowDirection.LeftToRight };
             TextBlock lblTitle = new TextBlock
             {
                 Text = "NologGuard",
@@ -395,7 +395,7 @@ namespace NologGuard
             };
             TextBlock lblVer = new TextBlock
             {
-                Text = "v1.2",
+                Text = "v" + AppConfig.AppVersion,
                 FontSize = 10.5,
                 Foreground = WpfTheme.TextMuted,
                 VerticalAlignment = VerticalAlignment.Bottom,
@@ -1420,6 +1420,25 @@ namespace NologGuard
                 _txtSubtitle.Text = T("subtitle");
                 _txtRoleBadge.Text = WindowsNetworkHelper.IsAdministrator() ? T("badge_admin") : T("badge_user");
                 _btnLang.Content = _config.Language.ToUpperInvariant() + " \u25BE";
+
+                bool rtl = Strings.IsRightToLeft(_config.Language);
+                FlowDirection = rtl ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+                if (_langPopup != null && _langPopup.Child is FrameworkElement)
+                {
+                    ((FrameworkElement)_langPopup.Child).FlowDirection = FlowDirection.LeftToRight;
+                }
+                if (_cmbDoh != null) _cmbDoh.FlowDirection = FlowDirection.LeftToRight;
+                if (_txtStatusHint != null) _txtStatusHint.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbPort != null) _tbPort.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbChunk != null) _tbChunk.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbDelay != null) _tbDelay.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbCustomDoh != null) _tbCustomDoh.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbAbCustomUrl != null) _tbAbCustomUrl.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbAbQuickAdd != null) _tbAbQuickAdd.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbBlockRules != null) _tbBlockRules.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbWlQuickAdd != null) _tbWlQuickAdd.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbWhitelist != null) _tbWhitelist.FlowDirection = FlowDirection.LeftToRight;
+                if (_tbLog != null) _tbLog.FlowDirection = FlowDirection.LeftToRight;
 
                 if (_cmbLang != null)
                 {
