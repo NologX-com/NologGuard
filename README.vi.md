@@ -2,7 +2,7 @@
 
 **Tạo bởi [NologX.com](https://nologx.com)** • [🌐 Trang Giới Thiệu (Landing Page)](https://nologx-com.github.io/NologGuard/) • [🇬🇧 English README](README.md) • [🔒 Chính sách quyền riêng tư](PRIVACY.md)
 
-**Công cụ 1-nút-bấm bảo vệ quyền riêng tư khi lướt web trên Windows** — Tích hợp **mã hóa DNS (DoH HTTP/2)**, **cắt nhỏ gói tin TLS SNI để giấu tên miền truy cập khỏi hệ thống lọc ISP**, **chặn/bỏ qua QUIC**, **chặn quảng cáo & tracker**, và **danh sách ngoại lệ** trong một ứng dụng gọn nhẹ (~363 KB), giữ nguyên IP thật và 100% tốc độ mạng gốc.
+**Công cụ 1-nút-bấm bảo vệ quyền riêng tư khi lướt web trên Windows** — Tích hợp **mã hóa DNS (DoH HTTP/2)**, **cắt nhỏ gói tin TLS SNI để giấu tên miền truy cập khỏi hệ thống lọc ISP**, **chặn/bỏ qua QUIC**, **chặn quảng cáo & tracker**, và **danh sách ngoại lệ** trong một ứng dụng gọn nhẹ (~370 KB), giữ nguyên IP thật và 100% tốc độ mạng gốc.
 
 ---
 
@@ -52,7 +52,8 @@ Bình thường khi bạn mở một trang web `https://`, dù nội dung bên t
    - **Kiến trúc Tray không giữ cửa sổ ngầm + Tự thu gọn RAM:** Khi bấm `✕` thu về khay hệ thống (hoặc chạy cùng Windows qua `--minimized`), NologGuard giải phóng hoàn toàn cửa sổ giao diện WPF (`TrayHost`), lưu hơn 240.000 tên miền lọc quảng cáo bằng mảng mã băm 64-bit gọn nhẹ (~2 MB thay vì hàng trăm nghìn chuỗi trên RAM), tái sử dụng bộ đệm socket và tự dọn RAM lúc rảnh — giữ mức RAM chạy nền trên Task Manager chỉ khoảng **`~5 MB`** (đo thực tế ~3,9–5,9 MB Private Working Set khi chạy nền kể cả khi bật bộ lọc lớn `HaGeZi Pro + hostsVN`; ~14 MB lúc truyền tải HTTPS liên tục).
    - **Tạm dừng nhanh:** Chuột phải icon khay hệ thống để chọn **Tạm dừng Chặn QC (5 phút)** hoặc **Tạm dừng Bảo vệ (15 phút)** với hẹn giờ tự bật lại, hoặc bấm **Tiếp tục ngay**.
 8. **Không lưu vết ra ổ cứng, 32 ngôn ngữ & Công cụ dòng lệnh:**
-   - **Nhật ký** chỉ giữ tạm 300 dòng gần nhất trong **RAM**, tắt app là xóa sạch, tuyệt đối không ghi lịch sử duyệt web xuống ổ đĩa.
+   - **Nhật ký** chỉ giữ tạm 200 dòng gần nhất trong **RAM**, tắt app là xóa sạch, tuyệt đối không ghi lịch sử duyệt web xuống ổ đĩa.
+   - Tích hợp sẵn ngoại lệ an toàn luôn bỏ chặn **`@@googleapis.com`**, **Microsoft Store** và **Windows Update** (tự bỏ qua Proxy hệ thống cho Store + miễn trừ UWP Loopback khi chạy Admin) nên không làm gián đoạn tải app hay dịch vụ Google ngay cả khi bật bộ lọc nghiêm ngặt (`HaGeZi Pro`).
    - Hỗ trợ **32 ngôn ngữ** (tự nhận diện ngôn ngữ Windows, tự động đổi bố cục phải-sang-trái RTL cho tiếng Ả Rập/Ba Tư/Do Thái: `Tiếng Việt`, `English`, `简体中文`, `繁體中文`, `日本語`, `한국어`, `Русский`, `Українська`, `Türkçe`, `العربية`, `فارسی`, `עברית`, `Bahasa Indonesia`, `Bahasa Melayu`, `ภาษาไทย`, `বাংলা`, `हिन्दी`, `Español`, `Português`, `Français`, `Deutsch`, `Italiano`, `Nederlands`, `Polski`, `Čeština`, `Română`, `Magyar`, `Ελληνικά`, `Svenska`, `Norsk`, `Dansk`, `Suomi`), kiểm tra cập nhật GitHub thủ công trong Cài đặt, và các cờ CLI `--minimized`, `--recover`, `--exit`.
 
 ---
@@ -75,7 +76,7 @@ NologGuard được biên dịch thuần **`x64`** trên nền **`.NET Framework
 
 ### 1. Cài đặt hoặc chạy ngay
 * **Bản cài đặt (`NologGuard-Setup.exe`):** Tải từ [GitHub Releases](https://github.com/NologX-com/NologGuard/releases), mở cài đặt bình thường (hoặc cài ngầm với `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
-* **Bản Portable (`NologGuard.exe`):** Chỉ 1 file ~363 KB chạy thẳng trên Windows 10/11, không cần cài driver hay phần mềm phụ trợ.
+* **Bản Portable (`NologGuard.exe`):** Chỉ 1 file ~370 KB chạy thẳng trên Windows 10/11, không cần cài driver hay phần mềm phụ trợ.
 
 ### 2. Bật bảo vệ hằng ngày (Chỉ 3 bước, KHÔNG cần quyền Admin)
 1. Mở **NologGuard** (mặc định chạy quyền `USER`, an toàn và không xung đột game/anti-cheat).

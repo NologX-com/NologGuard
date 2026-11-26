@@ -21,7 +21,7 @@ Tài liệu này hướng dẫn từng bước đưa **NologGuard** bản đầy
    git tag v1.2.0
    git push origin v1.2.0
    ```
-   > Vào tab **Actions** trên GitHub, bạn sẽ thấy workflow `.github/workflows/ci.yml` chạy test (`18/18 PASS`) và xuất ra cả `NologGuard.exe` (portable) lẫn `NologGuard-Setup.exe` (Inno Setup).
+   > Vào tab **Actions** trên GitHub, bạn sẽ thấy workflow `.github/workflows/ci.yml` chạy test (`26/26 PASS`) và xuất ra cả `NologGuard.exe` (portable) lẫn `NologGuard-Setup.exe` (Inno Setup).
 
 ---
 

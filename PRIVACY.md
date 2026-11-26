@@ -7,7 +7,7 @@ NologGuard is an open-source, client-side Windows privacy utility. We do not ope
 
 ## 1. Zero Browsing History & DNS Logs on Disk
 - All proxy routing, DNS-over-HTTPS (DoH) resolution, TLS SNI splitting, and domain-level AdBlock filtering run **100% locally on your device**.
-- The **Live Log** tab keeps only the most recent 300 entries **strictly in volatile RAM** (when enabled by you) and discards them immediately on close. Visited domains are **never written to disk** or transmitted to NologX.com.
+- The **Live Log** tab keeps only the most recent 200 entries **strictly in volatile RAM** (when enabled by you) and discards them immediately on close. Visited domains are **never written to disk** or transmitted to NologX.com.
 - Local preferences (`%APPDATA%\NologGuard\config.json`) store only your settings (selected DoH provider, ports, whitelist, custom block rules, UI language).
 
 ## 2. Third-Party Network Connections Initiated by Your Choices

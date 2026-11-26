@@ -52,7 +52,8 @@ Normally, even when you visit an `https://` website, your ISP can still tell **w
    - **Headless Tray Architecture + Auto-Trim:** Uses a lightweight `TrayHost` controller that unloads the WPF window when closed to the System Tray (`Minimize to Tray`) or started via `--minimized`, stores 240,000+ AdBlock domains in compact 64-bit `ulong[]` hashes (~2 MB, zero string heap), pools proxy socket buffers, and periodically trims idle pages — keeping Task Manager background memory around **`~5 MB`** (measured ~3.9–5.9 MB Private Working Set in tray even with `HaGeZi Pro + hostsVN` active; ~14 MB during active HTTPS bursts).
    - **Tray Quick Pause:** Right-click the tray icon to pause **AdBlock (5 min)** or **Shield (15 min)** with an automatic countdown timer, or click **Resume Now**.
 8. **Zero-Trace Privacy, 32 Languages (incl. RTL) & CLI Tools:**
-   - Logs live strictly in volatile RAM (last 300 lines, never written to disk).
+   - Logs live strictly in volatile RAM (last 200 lines, never written to disk).
+   - Built-in safe exclusions automatically keep **`googleapis.com` (`@@googleapis.com`)**, **Microsoft Store**, and **Windows Update** working cleanly even with strict filter presets (`HaGeZi Pro`, `hostsVN`) and standard `USER` mode.
    - **32 built-in languages** with Windows UI auto-detection and automatic Right-to-Left layout (`English`, `Tiếng Việt`, `简体中文`, `繁體中文`, `日本語`, `한국어`, `Русский`, `Українська`, `Türkçe`, `العربية`, `فارسی`, `עברית`, `Bahasa Indonesia`, `Bahasa Melayu`, `ภาษาไทย`, `বাংলা`, `हिन्दी`, `Español`, `Português`, `Français`, `Deutsch`, `Italiano`, `Nederlands`, `Polski`, `Čeština`, `Română`, `Magyar`, `Ελληνικά`, `Svenska`, `Norsk`, `Dansk`, `Suomi`).
    - Manual **Check for Updates** button in Settings (queries GitHub Releases only when clicked).
    - CLI recovery/automation flags: `--minimized`, `--recover`, `--exit`.
@@ -77,7 +78,7 @@ NologGuard is compiled as a native `x64` `.NET Framework 4.8` desktop app (zero 
 
 ### Installation
 * **Installer (`NologGuard-Setup.exe`):** Download from [GitHub Releases](https://github.com/NologX-com/NologGuard/releases), run and follow the wizard (or install silently with `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART`).
-* **Portable (`NologGuard.exe`):** Single ~363 KB standalone executable — zero installation, zero drivers, zero external runtimes required on Windows 10/11.
+* **Portable (`NologGuard.exe`):** Single ~370 KB standalone executable — zero installation, zero drivers, zero external runtimes required on Windows 10/11.
 
 ### Daily Use (Standard `USER` Mode — Recommended)
 1. Launch **NologGuard** (no Administrator prompt needed for browser protection).

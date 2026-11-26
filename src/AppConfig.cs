@@ -76,7 +76,7 @@ namespace NologGuard
                 "Quad9 Security (9.9.9.9)",
                 "dns.quad9.net",
                 "/dns-query",
-                new string[] { "9.9.9.9", "149.112.112.112" },
+                new string[] { "9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9" },
                 new string[] { "9.9.9.9", "149.112.112.112" },
                 new string[] { "2620:fe::fe", "2620:fe::9" }),
             new DohProvider(
@@ -84,7 +84,7 @@ namespace NologGuard
                 "Quad9 ECS (9.9.9.11)",
                 "dns11.quad9.net",
                 "/dns-query",
-                new string[] { "9.9.9.11", "149.112.112.11" },
+                new string[] { "9.9.9.11", "149.112.112.11", "2620:fe::11", "2620:fe::fe:11" },
                 new string[] { "9.9.9.11", "149.112.112.11" },
                 new string[] { "2620:fe::11", "2620:fe::fe:11" }),
             new DohProvider(
@@ -92,7 +92,7 @@ namespace NologGuard
                 "Cloudflare (1.1.1.1)",
                 "cloudflare-dns.com",
                 "/dns-query",
-                new string[] { "1.1.1.1", "1.0.0.1" },
+                new string[] { "1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001" },
                 new string[] { "1.1.1.1", "1.0.0.1" },
                 new string[] { "2606:4700:4700::1111", "2606:4700:4700::1001" }),
             new DohProvider(
@@ -100,7 +100,7 @@ namespace NologGuard
                 "Google Public DNS (8.8.8.8)",
                 "dns.google",
                 "/dns-query",
-                new string[] { "8.8.8.8", "8.8.4.4" },
+                new string[] { "8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844" },
                 new string[] { "8.8.8.8", "8.8.4.4" },
                 new string[] { "2001:4860:4860::8888", "2001:4860:4860::8844" }),
             new DohProvider(
@@ -108,7 +108,7 @@ namespace NologGuard
                 "AdGuard DNS (Ad-blocking)",
                 "dns.adguard-dns.com",
                 "/dns-query",
-                new string[] { "94.140.14.14", "94.140.15.15" },
+                new string[] { "94.140.14.14", "94.140.15.15", "2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff" },
                 new string[] { "94.140.14.14", "94.140.15.15" },
                 new string[] { "2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff" })
         };
@@ -176,8 +176,8 @@ namespace NologGuard
     [DataContract]
     public sealed class AppConfig
     {
-        public const string AppVersion = "1.2.3";
-        public const string UserAgent = "NologGuard/1.2.3 (NologX.com)";
+        public const string AppVersion = "1.2.4";
+        public const string UserAgent = "NologGuard/1.2.4 (NologX.com)";
         public const string GitHubRepo = "NologX-com/NologGuard";
 
         [DataMember] public string Language { get; set; }
@@ -257,7 +257,7 @@ namespace NologGuard
                 "# Custom AdBlock / Anti-Tracking rules (on top of selected preset)",
                 "# Add a domain to block it, or prefix with @@ to allow/unblock:",
                 "# ads.example.com",
-                "# @@analytics.example.com"
+                "@@googleapis.com"
             };
         }
 

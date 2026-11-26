@@ -45,6 +45,7 @@ namespace NologGuard
         private const string QuicRuleName = "NologGuard_Block_QUIC_UDP_443";
         private const int InternetOptionSettingsChanged = 39;
         private const int InternetOptionRefresh = 37;
+        private static bool _storeLoopbackEnsured;
 
         public static bool IsAdministrator()
         {
@@ -135,6 +136,10 @@ namespace NologGuard
             if (config.ApplySystemProxy)
             {
                 ApplySystemProxyInternal(state, activePort, new DomainMatcher(config.Whitelist).BuildWindowsProxyOverride());
+                if (admin)
+                {
+                    EnsureMicrosoftStoreLoopbackExempt();
+                }
             }
             else if (state.ProxyModified)
             {
@@ -598,11 +603,24 @@ namespace NologGuard
             return list;
         }
 
+        private static void EnsureMicrosoftStoreLoopbackExempt()
+        {
+            if (_storeLoopbackEnsured) return;
+            _storeLoopbackEnsured = true;
+            RunProcessSilent("CheckNetIsolation.exe", "LoopbackExempt -a -n=Microsoft.WindowsStore_8wekyb3d8bbwe");
+            RunProcessSilent("CheckNetIsolation.exe", "LoopbackExempt -a -n=Microsoft.StorePurchaseApp_8wekyb3d8bbwe");
+        }
+
         private static int RunNetsh(string args)
+        {
+            return RunProcessSilent("netsh.exe", args);
+        }
+
+        private static int RunProcessSilent(string fileName, string args)
         {
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo("netsh.exe", args);
+                ProcessStartInfo psi = new ProcessStartInfo(fileName, args);
                 psi.CreateNoWindow = true;
                 psi.UseShellExecute = false;
                 using (Process proc = Process.Start(psi))

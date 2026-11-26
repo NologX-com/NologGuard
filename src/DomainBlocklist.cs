@@ -126,6 +126,26 @@ namespace NologGuard
             "watson.telemetry.microsoft.com"
         };
 
+        /// <summary>
+        /// Always-allowed service domains so strict third-party filter lists never break
+        /// Google APIs (Chrome/AI/Fonts/Firebase) or Microsoft Store / Windows Update.
+        /// </summary>
+        public static readonly string[] BuiltInAllowDomains = new string[]
+        {
+            "googleapis.com",
+            "mp.microsoft.com",
+            "s-microsoft.com",
+            "apps.microsoft.com",
+            "store.microsoft.com",
+            "windowsupdate.com",
+            "update.microsoft.com",
+            "msftconnecttest.com",
+            "msftncsi.com",
+            "login.live.com",
+            "login.microsoftonline.com",
+            "auth.gfx.ms"
+        };
+
         private readonly CompactDomainSet _blocked = new CompactDomainSet();
         private readonly CompactDomainSet _allowed = new CompactDomainSet();
 
@@ -217,6 +237,10 @@ namespace NologGuard
         {
             DomainBlocklist bl = new DomainBlocklist();
             bl.LoadLines(StarterDomains);
+            for (int i = 0; i < BuiltInAllowDomains.Length; i++)
+            {
+                bl.AddRuleLine("@@" + BuiltInAllowDomains[i]);
+            }
 
             if (!string.Equals(presetId, "starter", StringComparison.OrdinalIgnoreCase))
             {

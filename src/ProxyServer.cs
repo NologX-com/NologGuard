@@ -366,6 +366,19 @@ namespace NologGuard
                     return;
                 }
 
+                if (targetPort == ListenPort)
+                {
+                    for (int i = 0; i < ips.Length; i++)
+                    {
+                        if (IPAddress.IsLoopback(ips[i]))
+                        {
+                            Log("[BLOCKED-LOOP] " + targetHost + ":" + targetPort);
+                            await SendErrorResponseAsync(clientStream, "403 Forbidden").ConfigureAwait(false);
+                            return;
+                        }
+                    }
+                }
+
                 upstream = await ConnectUpstreamAsync(ips, targetPort, ct).ConfigureAwait(false);
                 if (upstream == null)
                 {
@@ -813,14 +826,14 @@ namespace NologGuard
             {
                 string line = header.HeaderLines[i];
                 if (line.Length == 0) continue;
-                if (line.StartsWith("Proxy-Connection:", StringComparison.OrdinalIgnoreCase))
+                if (line.StartsWith("Proxy-Connection:", StringComparison.OrdinalIgnoreCase) ||
+                    line.StartsWith("Connection:", StringComparison.OrdinalIgnoreCase))
                 {
-                    sb.Append("Connection:").Append(line.Substring("Proxy-Connection:".Length)).Append("\r\n");
                     continue;
                 }
                 sb.Append(line).Append("\r\n");
             }
-            sb.Append("\r\n");
+            sb.Append("Connection: close\r\n\r\n");
             rewrittenHeaders = sb.ToString();
             return true;
         }

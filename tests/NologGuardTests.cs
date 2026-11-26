@@ -33,9 +33,12 @@ namespace NologGuardTests
             RunTest("DomainBlocklist_FormatsAndExceptions", TestDomainBlocklistFormats);
             RunTest("DomainBlocklist_CompactHashDedupeAndSeal", TestDomainBlocklistCompactHashDedupe);
             RunTest("DomainBlocklist_PerPresetCacheIsolation", TestDomainBlocklistPerPresetIsolation);
+            RunTest("DomainBlocklist_BuiltInAllowsGoogleApisAndMsStore", TestBuiltInAllowsGoogleApisAndMsStore);
+            RunTest("DomainMatcher_ProxyOverrideIncludesMsStoreAndLan", TestProxyOverrideIncludesMsStoreAndLan);
             RunTest("BlocklistPreset_HostsVnAndCustomUrl", TestBlocklistPresetHostsVnAndCustom);
             RunTest("ProxyServer_AdBlockAndWhitelistPrecedence", TestProxyAdBlockAndPrecedence);
             RunTest("ProxyServer_VerifyLoopbackAdBlock", TestProxyVerifyLoopbackAdBlock);
+            RunTest("ProxyServer_BlocksSelfLoopOnListenPort", TestProxyBlocksSelfLoop);
             RunTest("ProxyServer_StopAbortsActiveKeepAliveTunnels", TestProxyStopAbortsActiveTunnels);
             RunTest("TlsClientHelloParser_CoalescedRecordHandshakeBound", TestTlsCoalescedRecordBound);
             RunTest("SingleInstanceLock_RelaunchWaitsAndAcquires", TestSingleInstanceLockRelaunch);
@@ -459,6 +462,7 @@ namespace NologGuardTests
                     httpServer.Wait(3000);
                     Assert(capturedHttp != null && capturedHttp.StartsWith("GET /hello?x=1 HTTP/1.1"), "Origin-form rewrite failed");
                     Assert(!capturedHttp.Contains("Proxy-Connection:"), "Proxy-Connection header should be stripped");
+                    Assert(capturedHttp.IndexOf("Connection: close", StringComparison.OrdinalIgnoreCase) >= 0, "Plain HTTP must enforce Connection: close");
                 }
                 finally
                 {
@@ -697,6 +701,69 @@ namespace NologGuardTests
             finally
             {
                 try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+
+        private static void TestBuiltInAllowsGoogleApisAndMsStore()
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "NologGuard_SafeAllowTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                File.WriteAllText(
+                    DomainBlocklist.GetCacheFilePath("hagezi-pro", tempDir),
+                    "||googleapis.com^\n||firebaselogging.googleapis.com^\n||mp.microsoft.com^\n||s-microsoft.com^\n||apps.microsoft.com^\n||windowsupdate.com^\n||login.live.com^\n||ads-tracker.example.test^\n",
+                    Encoding.UTF8);
+
+                DomainBlocklist bl = DomainBlocklist.Build("hagezi-pro", null, tempDir);
+                Assert(!bl.IsBlocked("googleapis.com"), "googleapis.com must always be allowed");
+                Assert(!bl.IsBlocked("generativelanguage.googleapis.com"), "subdomains of googleapis.com must always be allowed");
+                Assert(!bl.IsBlocked("firebaselogging.googleapis.com"), "firebaselogging.googleapis.com must stay allowed");
+                Assert(!bl.IsBlocked("storeedgefd.dsx.mp.microsoft.com"), "Microsoft Store edge must stay allowed");
+                Assert(!bl.IsBlocked("fe3cr.delivery.mp.microsoft.com"), "Microsoft Store delivery must stay allowed");
+                Assert(!bl.IsBlocked("store-images.s-microsoft.com"), "Microsoft Store images must stay allowed");
+                Assert(!bl.IsBlocked("apps.microsoft.com"), "apps.microsoft.com must stay allowed");
+                Assert(!bl.IsBlocked("login.live.com"), "login.live.com must stay allowed");
+                Assert(bl.IsBlocked("ads-tracker.example.test"), "Unrelated tracker must still be blocked");
+                Assert(bl.IsBlocked("vortex.data.microsoft.com"), "Microsoft telemetry should still be blocked");
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { }
+            }
+        }
+
+        private static void TestProxyOverrideIncludesMsStoreAndLan()
+        {
+            DomainMatcher m = new DomainMatcher(AppConfig.CreateDefaultWhitelist());
+            string ov = m.BuildWindowsProxyOverride();
+            Assert(ov.Contains("*.mp.microsoft.com"), "ProxyOverride must bypass *.mp.microsoft.com for UWP Store");
+            Assert(ov.Contains("*.s-microsoft.com"), "ProxyOverride must bypass *.s-microsoft.com for UWP Store");
+            Assert(ov.Contains("apps.microsoft.com"), "ProxyOverride must bypass apps.microsoft.com");
+            Assert(ov.Contains("*.windowsupdate.com"), "ProxyOverride must bypass *.windowsupdate.com");
+            Assert(ov.Contains("*.msftconnecttest.com"), "ProxyOverride must bypass NCSI probe");
+            Assert(ov.Contains("172.16.*") && ov.Contains("172.31.*") && ov.Contains("169.254.*"), "ProxyOverride must include RFC1918 172.16-31 and link-local");
+            Assert(!ov.Contains("vortex.data.microsoft.com"), "Telemetry domains must not be bypassed");
+        }
+
+        private static void TestProxyBlocksSelfLoop()
+        {
+            AppConfig cfg = AppConfig.CreateDefault();
+            cfg.Whitelist = new List<string>();
+            using (ProxyServer proxy = new ProxyServer(new StubLoopbackResolver(), cfg))
+            {
+                proxy.Start(0);
+                using (TcpClient c = new TcpClient())
+                {
+                    c.Connect(IPAddress.Loopback, proxy.ListenPort);
+                    NetworkStream ns = c.GetStream();
+                    byte[] req = Encoding.ASCII.GetBytes("CONNECT 127.0.0.1:" + proxy.ListenPort + " HTTP/1.1\r\nHost: 127.0.0.1:" + proxy.ListenPort + "\r\n\r\n");
+                    ns.Write(req, 0, req.Length);
+                    byte[] resp = new byte[128];
+                    int n = ns.Read(resp, 0, resp.Length);
+                    string text = Encoding.ASCII.GetString(resp, 0, n);
+                    Assert(text.StartsWith("HTTP/1.1 403", StringComparison.OrdinalIgnoreCase), "Self-loop CONNECT to ListenPort must return 403, got: " + text);
+                }
             }
         }
 

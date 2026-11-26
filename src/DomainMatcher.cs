@@ -140,9 +140,27 @@ namespace NologGuard
             items.Add("localhost");
             items.Add("127.*");
             items.Add("10.*");
+            for (int octet = 16; octet <= 31; octet++)
+            {
+                items.Add("172." + octet + ".*");
+            }
+            items.Add("169.254.*");
             items.Add("192.168.*");
             items.Add("*.local");
             items.Add("*.ts.net");
+            // Bypass Windows UWP Loopback Isolation for Microsoft Store, Windows Update, and NCSI
+            items.Add("*.mp.microsoft.com");
+            items.Add("*.s-microsoft.com");
+            items.Add("apps.microsoft.com");
+            items.Add("store.microsoft.com");
+            items.Add("*.store.microsoft.com");
+            items.Add("*.windowsupdate.com");
+            items.Add("*.update.microsoft.com");
+            items.Add("*.msftconnecttest.com");
+            items.Add("*.msftncsi.com");
+            items.Add("login.live.com");
+            items.Add("login.microsoftonline.com");
+            items.Add("*.xboxlive.com");
 
             HashSet<string> seen = new HashSet<string>(items, StringComparer.OrdinalIgnoreCase);
 
